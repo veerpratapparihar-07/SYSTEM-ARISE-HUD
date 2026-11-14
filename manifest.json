@@ -1,0 +1,30 @@
+{
+  "name": "THE SYSTEM \u2014 Solo Leveling Hunter HUD",
+  "short_name": "THE SYSTEM",
+  "description": "Interactive Solo Leveling System HUD, Habit Tracker, Dungeon Timer, and Shadow Army Manager.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#030712",
+  "theme_color": "#00e5ff",
+  "categories": [
+    "productivity",
+    "lifestyle",
+    "games"
+  ],
+  "icons": [
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='96' fill='%23030712'/><polygon points='256,36 456,146 456,366 256,476 56,366 56,146' fill='none' stroke='%2300e5ff' stroke-width='22'/><path d='M330,165 L195,165 L165,225 L345,285 L315,345 L180,345' fill='none' stroke='%23a855f7' stroke-width='28' stroke-linecap='square'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='36' fill='%23030712'/><polygon points='96,14 170,55 170,137 96,178 22,137 22,55' fill='none' stroke='%2300e5ff' stroke-width='9'/><path d='M124,62 L73,62 L62,84 L130,107 L118,130 L68,130' fill='none' stroke='%23a855f7' stroke-width='11' stroke-linecap='square'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
