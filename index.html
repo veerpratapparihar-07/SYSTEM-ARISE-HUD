@@ -1,0 +1,2781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#00e5ff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="THE SYSTEM" />
+  <title>SOLO LEVELING — THE SYSTEM (PRO EDITION v5.0)</title>
+  <link rel="manifest" href="./manifest.json" />
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Cinzel+Decorative:wght@700&family=Exo+2:wght@400;600;800&family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <!-- React & ReactDOM UMD -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel Standalone -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #030712;
+      color: #e2e8f0;
+      overflow-x: hidden;
+      user-select: none;
+    }
+    .scanlines {
+      background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0),
+        rgba(255,255,255,0) 50%,
+        rgba(0, 0, 0, 0.26) 50%,
+        rgba(0, 0, 0, 0.26)
+      );
+      background-size: 100% 4px;
+    }
+    @keyframes systemPop {
+      0% { opacity: 0; transform: scale(0.92) translateY(8px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .system-window-anim {
+      animation: systemPop 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    @keyframes bannerSweep {
+      0% { opacity: 0; transform: scaleX(0.2); }
+      20% { opacity: 1; transform: scaleX(1); }
+      85% { opacity: 1; transform: scaleX(1); }
+      100% { opacity: 0; transform: scaleX(1.05); }
+    }
+    .cinematic-banner {
+      animation: bannerSweep 2.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(5, 10, 25, 0.85); }
+    ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.45); border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo } = React;
+
+    // --- CRYPTOGRAPHIC SHA-256 ENGINE (Works on both HTTPS and local file://) ---
+    function sha256Pure(ascii) {
+      function rightRotate(value, amount) {
+        return (value >>> amount) | (value << (32 - amount));
+      }
+      const mathPow = Math.pow;
+      const maxWord = mathPow(2, 32);
+      const lengthProperty = "length";
+      let i, j;
+      let result = "";
+      const words = [];
+      const asciiBitLength = ascii[lengthProperty] * 8;
+      let hash = (sha256Pure.h = sha256Pure.h || []);
+      const k = (sha256Pure.k = sha256Pure.k || []);
+      let primeCounter = k[lengthProperty];
+      const isComposite = {};
+      for (let candidate = 2; primeCounter < 64; candidate++) {
+        if (!isComposite[candidate]) {
+          for (i = 0; i < 313; i += candidate) {
+            isComposite[i] = candidate;
+          }
+          hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
+          k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+        }
+      }
+      ascii += "\x80";
+      while ((ascii[lengthProperty] % 64) - 56) ascii += "\x00";
+      for (i = 0; i < ascii[lengthProperty]; i++) {
+        j = ascii.charCodeAt(i);
+        if (j >> 8) return "";
+        words[i >> 2] |= j << (((3 - i) % 4) * 8);
+      }
+      words[words[lengthProperty]] = (asciiBitLength / maxWord) | 0;
+      words[words[lengthProperty]] = asciiBitLength;
+      for (j = 0; j < words[lengthProperty]; ) {
+        const w = words.slice(j, (j += 16));
+        const oldHash = hash;
+        hash = hash.slice(0, 8);
+        for (i = 0; i < 64; i++) {
+          const i2 = i + j;
+          const w15 = w[i - 15],
+            w2 = w[i - 2];
+          const a = hash[0],
+            e = hash[4];
+          const temp1 =
+            hash[7] +
+            (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) +
+            ((e & hash[5]) ^ (~e & hash[6])) +
+            k[i] +
+            (w[i] =
+              i < 16
+                ? w[i]
+                : (w[i - 16] +
+                    (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3)) +
+                    w[i - 7] +
+                    (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))) |
+                  0);
+          const temp2 =
+            (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) +
+            ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+          hash = [(temp1 + temp2) | 0].concat(hash);
+          hash[4] = (hash[4] + temp1) | 0;
+        }
+        for (i = 0; i < 8; i++) {
+          hash[i] = (hash[i] + oldHash[i]) | 0;
+        }
+      }
+      for (i = 0; i < 8; i++) {
+        for (j = 3; j + 1; j--) {
+          const b = (hash[i] >> (j * 8)) & 255;
+          result += (b < 16 ? 0 : "") + b.toString(16);
+        }
+      }
+      return result;
+    }
+
+    const VAULT_SALT = "SHADOW_MONARCH_VAULT_2026_SALT::";
+
+    // 100 CRYPTOGRAPHICALLY HASHED MONARCH PRO PASS ACCESS CODES
+    // Plaintext codes are completely hidden from the source code!
+    const VALID_MONARCH_HASHES = ["849d51bb881b877a3591472c97957e6f73b919429db349d151308ab1b1913f0f", "a9ab3ad249a219ef06249a54de9ae6d05a9d7846c42fe6a70bfa9a13b010de8a", "47bddb88a7ad5456453ce32986c82ec799d973d3f2f5ad34f690b14906b7ae18", "69a53ef20205a3971b6b73a4568f2a9f40ff9cf59a103b472b95d19437f3541c", "bc515f75f44ce0947f962d107d1650366f084fc2c2c5aed243380ab9f69e7323", "fe43a8cb30f7f7293c292790f6e4d8d7f1fe73ba55f072f964c00627092b14f5", "23e2728271e19eca0b4f5008c8e90133564ca21eb2accf54bc09465107386f62", "90b16fd0ae4904d84560c175e6395e3a553a76a243d53381e0ed926a79486a8b", "771e3e05eaa4ce53a96f0503efa60e9facb9b5a1a864ed58e5dc2e545c9cbfb7", "1a7bd9aa898c226de3828f18cb29ab5ffa6aadd3efab8c18d6d81fe3f09c8cf9", "fca07d115175095fb2ba7ea201a3423dd7a5c72a5896bb5028bb13f7ade1fe60", "6c16d42d799d488b1a6c071599f21b4b91e46f81780e12aca29d9a9b0633b0fd", "d82af254b28172893c94971b6e176f4d684be7c4574769fd1e4afee948a5b0d7", "13992c43123707b753b7f322c84255cd6d3a1937c44567ebaae4f4ced90b5400", "3ed41ffd5686dfeb3134f6f741d53e62bc10aaade3a04db3e7776f4af0e990cc", "c0c7ea3cb77deedd5cac878bee73bff007968bf652b50b17ac5c15ada7975f91", "5d494643f0f0e0e89a4c1a1257fe5a95b967bf2a9b0943a913eb95dd75e7b82d", "2017dc5800f3f693da65fb1cc23dd503743bc831c23cc594c7a488a6c151020e", "a3a49ad661f6c20bbe0d2b9706a9d27bde46d7c44c9bbfa4092fbbe59b6f9bed", "fa59ec21dcf00a68112d5816c8279617993ec70cfa3570c07f552178e0a4d325", "8b7a61a7979ed57dd05e5124e08e9858426e907e9905cf3a46133985cb09e135", "5cf50d11da1e40dff8d434f684e0953a8387c4647002841fe124d521603cc602", "5a65b595f0aeee4f1e7c0d67f27b90d293ad8a8ecfb6b7b498880ba63e1c382e", "f9cb3f9482c1a0d7e658afed0d30868879be5dceae0e478e56547fd28996e736", "45d36f7818025de6ce4cd489095d818228b1f58870edb04f7959a8b5a462934a", "58be3e7f61c3d77d909d41199763f706ba52123dcdccb16a3835c58deaad6ee0", "487b393258179896cfcc98265dd53ed72c6ab065aeb7657b24cfe7a2df15fe9d", "3a4222e17e572cd553db3207a1ad92898766164df9364ff45db6e651361f8d8f", "784628e1100b788604f155446abe8b0208cd56ab2d5ad26f0f6e7c1551bdfd71", "51311d54f71124a7c64fada9a5925dca4441ceb2fa7507008eef83da4d4f5a40", "3204cdf5009131b7602ea35cfc554b9ca166f39b14c94c3588f02205a62905d5", "7827e93291673c1d23b6aa238fc148553393b47b53adf44bac3f5d43e5cd7f82", "555243e4f9f9f03c88c773508f05444850a29fbca6ba32265c5e0c990b225367", "a919fc2d204ee6e68753f8cbf9bafcf3d7c8084d2e8eb07edba44fa9a732105b", "0e35faa3b4f2a43c6866848406602f41aff84b9f069545289d118050da7472e6", "68afe7caf0893fce7700b9b06362e7de9fd4a8b290ccb64651623031ecb7c863", "b49dc525897fa514ecef500ac51d91d2f341dd290603f9eb141f503d1f2e7440", "3599c125c5f56d4003181c49b4fbe619094149ce3d3210ae61fb3b0a33e06199", "2e9b4d6430f73c2e4d6371d77a2071c6b3c454ed055904038e0d246cc9ccaeea", "12f2d4fe8beb041675358ce9284c8c9d5554b783534c9e10afd69e876fd1b9d3", "9adf2e7a4b8f313c8bd8c7c2fd9034c34b72ebaef1624ecbf61e6f48d4992558", "4a7eee35a30a8f2f20cb89046815e26f09a78f0e1bc26b8dbb148a81603fdcf8", "35371b9b3a2cffb2541403f77dd90e4568fcc8bb1840c8ebab1816c0b0284d7a", "00c358bcd89ef645e8e7249a290b5cbf7d4e4ec46f3526d3294e673abce1a5bc", "6ca3b10a1942fa64534654c829139a1fa5e72f6443276abd64409537eafc14f8", "979c12980a83f64ebfd5c688c6b9ffa4da03a2ce6239cdd7246d9c9d291b6746", "7173ab5655a88756128259c0ea8ae554a2ed47a2fca966e8320c55ede2fa38f1", "008d24e2cfa01bf20fe49d5b1fd3323f3f76454bd9f785edb2b232cf8d21c87e", "0da762769b755e9f0d8910290a5957b1df23892d4bee8bfe7f45a90c7da9a7bf", "90291c98fcbcede24d8c2151ef733d7fdc117a26e70d03d43cafcdc23efed51e", "41107ff524cdeaea437f3506803f56f5a715b56572c165b760fde6c5db7c016f", "29f17fc4e05d9b1f34649f2d95f4c8a16c6a4dba30aa6137c54dd59456f1690f", "10d39d60f89e2b0e95ceed0d8d01731f51592661e8a3e2d78a15b1df65226348", "af27b1b06339b4fcd16e348a70f39b725fd6d5d1462075b99c4aeac9c4064268", "fe31c797a6d4a14dc10e7dd4b5b9a99a6b76bcbdb5251324af0f8bbe3e198348", "da612fd427a45e2d06f3bc4e7fa99693e1c8ea3f6d921a5d3847b4dac478494a", "03eb0bc24af2e7418bb4ad885dad21da5e0513f68d7910f2e90330916c74f446", "eadf6f5caf96312ed4960598e7c8beb210d035b229a172ae0f25226887994965", "9f79bb31ca7e4d4eb1a5f8d59f33e52a9e93e7626b9671c78199c0422cc26272", "70102b30c240dcb51ac80ad4307f56af1d3a59b6ddc5ecceba3b7e8328ed2888", "8d87900718ac1d685b35f0385339e6b70ae65fc5379eac27149cabc5f3bb2115", "c5a871d7a34ffc3a4a33cb7192ac07a08b37e21c78c67f8f0b503b68673bc1cd", "438ae94d6beba1fdcd8f7dad05fd818307852a59bde641afddaa56a90d5507ae", "dcd035a53877328d65aa1d489dfab76989e60edc77219ef5b8ebe2bb6e25e697", "80882c21d4a2ae54b7b17e1fda0127edcf48d6d6f8b28eac007b4d59630e91ea", "40467772dafa632f6e7a90cea60818afeb9fa4145da177f3ca32a56535dd1922", "056cdbc3fd697d347a1e5b94732a540d6130f09cb06c93335a20a341c957db36", "3cc7355ea725e377e8a08ba8c11394c865f3f787946d6c8a938aa471b1089756", "0a137ca86c073fac767fb7a8bd5a2ff35d8b7c8acf1d47eb4485f286378f05da", "46c55b6def2b7f9bc1db0d9e81ffb434adde31b6cd7743b4738f580b12006192", "6bbf8589a9c2fdf80e8636555e13cdce1c0453603d69dd7ccbf3ef571b938094", "0789c23b733c669b0f0f17066996584a5cd190a08de46385b54a8753ee18641a", "81af7c8876cc8568da490aa72aa329fb7f3fe70589c07a5335ca7a9e630e001c", "9cb143d0f71dd664ddf596ec1ca6867d46d3db6c0d5c0f9294cde6ce72640038", "6d6e6320a81c957d6c8c29647d28d7bc6b5e05d73a7c7df60228d13e85368aef", "d02051479ad2f9b2f4ec9e8537fbc23e9df1db09cfff29b7a7c0c1925b0eaf1d", "66486312fe4400ea60bd33a115b16a18d608147ede2e64b191944b5c40c7c878", "bd3b459f08cf47624d8960c6d5a1da6c10169623fb6dbcfb0befe0f4b7398053", "75c480fbe906ef1905dae431f067b83b9aae04e6385f5f2f5d83e1641ebded81", "392cc80dd937243f8f46a77d115b0c591a8b74d2a8e05491967238ae55e2df84", "b260b4ee5498951767a3f410a8ef7fb65b21298703d7a0bae0d6d62475dba516", "def36e2c8730bcc48d3f73540b3a9a0e2af2b440ed60a178e07b870de0a87449", "991a56e8477819003bdb9785018423acf1e3b9f33cd4d7de53132b03d2d16ea3", "4a07c2056cc8d19a63d601eec243748d821ccfc97f9440f1be46426cf0fc7c93", "70180780c3109ccb7a32268ce808ff83f970903c3d5b70c18af7c7e815cd6de5", "7ada1dbea026a3c71386e99282e368ba951ca4c289b0463b629642df539b40f3", "8a8ddb270494913d30ad20987e260f590935a2d0ed2cc1c5e887047ded2fcf03", "699675e7c1b9344f73ef7788c59060ea08afb5a28775abaaaff02ae0dd0f6dc6", "a106c6faccdbe137e91f3a8842a3bf569ede0cf18f7f35483e65f768d3bde04b", "93f5184133bee5b10e66831248c9749899119f7f62223839a93a45447bdfe086", "253ab19e538d433de52e52c27a6d6ac100a87878487383eff5c14e991d15c847", "77a9d69035739e00bf8c65214526aa133d696cab0b99d9076c3d4330f1207a28", "8c3f25058ec4c7a22e75d2fbccedfec9d1bd1e0cdf5b61a1047febf3fb3fe47d", "27b630a3e11980a487778fed4a770a3be4ab41e4973421b28c9ec33b35760162", "fa74efa15d6a4265f9e00fc328a58ea89c2229a5b498a853e4b2f62f127ee7c3", "b68d65c58d8e3f6f61ad248d32fd6008e60f90c7b059b22e5dc89c9fd89c574c", "00d0a3fb19d48188331b0ef484e4ace11bfbab8651318cd63a105d2f56bdc508", "4cd6373bc470c1983ab4ea9b0382b3bbc0383a49d214cac0a3b32dad77d5402e", "c78d7c41b97459ee9fe6bcd69f664d155518cec02fa67070538c517a8a94832f", "989766ca8fb7342c55a4ba078a9ca86b7de969125c8da949f48de32e4d81393c"];
+
+    // --- 12 COLOR PRESETS & MULTI-TONE COMBOS ---
+    const COLOR_PRESETS = {
+      classicCyan: {
+        name: "Classic System Cyan",
+        primary: "#00e5ff",
+        secondary: "#0284c7",
+        accent: "#38bdf8",
+        bg: "#030914",
+        panel: "rgba(6, 20, 42, 0.84)",
+        text: "#e0f7fa",
+        danger: "#ff2a55"
+      },
+      shadowMonarch: {
+        name: "Shadow Monarch Sovereign",
+        primary: "#a855f7",
+        secondary: "#6366f1",
+        accent: "#e879f9",
+        bg: "#060311",
+        panel: "rgba(17, 8, 36, 0.86)",
+        text: "#f3e8ff",
+        danger: "#f43f5e"
+      },
+      bloodPenalty: {
+        name: "Blood Red Penalty Zone",
+        primary: "#ff2a55",
+        secondary: "#991b1b",
+        accent: "#fb7185",
+        bg: "#120307",
+        panel: "rgba(36, 7, 15, 0.88)",
+        text: "#ffe4e6",
+        danger: "#ef4444"
+      },
+      nationalGold: {
+        name: "National Level Gold",
+        primary: "#fbbf24",
+        secondary: "#d97706",
+        accent: "#fde68a",
+        bg: "#100b02",
+        panel: "rgba(32, 22, 5, 0.88)",
+        text: "#fef3c7",
+        danger: "#f87171"
+      },
+      worldTree: {
+        name: "World Tree Emerald",
+        primary: "#10b981",
+        secondary: "#059669",
+        accent: "#6ee7b7",
+        bg: "#02100b",
+        panel: "rgba(5, 29, 21, 0.86)",
+        text: "#d1fae5",
+        danger: "#fb7185"
+      },
+      demonBaran: {
+        name: "Demon King Baran (Dual-Tone)",
+        primary: "#38bdf8",
+        secondary: "#c084fc",
+        accent: "#f472b6",
+        bg: "#06081b",
+        panel: "rgba(14, 17, 45, 0.86)",
+        text: "#e0f2fe",
+        danger: "#fb7185"
+      },
+      kamishWrath: {
+        name: "Kamish's Wrath Dragonfire",
+        primary: "#f97316",
+        secondary: "#dc2626",
+        accent: "#facc15",
+        bg: "#120602",
+        panel: "rgba(36, 12, 5, 0.88)",
+        text: "#ffedd5",
+        danger: "#ef4444"
+      },
+      frostMonarch: {
+        name: "Frost Monarch Glacial",
+        primary: "#67e8f9",
+        secondary: "#3b82f6",
+        accent: "#ffffff",
+        bg: "#020d18",
+        panel: "rgba(7, 25, 44, 0.85)",
+        text: "#ecfeff",
+        danger: "#f43f5e"
+      },
+      igrisBloodSteel: {
+        name: "Igris Blood-Steel",
+        primary: "#ef4444",
+        secondary: "#64748b",
+        accent: "#cbd5e1",
+        bg: "#08090d",
+        panel: "rgba(18, 20, 30, 0.88)",
+        text: "#f1f5f9",
+        danger: "#dc2626"
+      },
+      ashbornEclipse: {
+        name: "Ashborn's Eclipse (Tri-Tone)",
+        primary: "#c084fc",
+        secondary: "#fbbf24",
+        accent: "#38bdf8",
+        bg: "#080312",
+        panel: "rgba(20, 9, 36, 0.88)",
+        text: "#faf5ff",
+        danger: "#f43f5e"
+      },
+      beruAbyss: {
+        name: "Ant King Beru Abyss",
+        primary: "#2dd4bf",
+        secondary: "#9333ea",
+        accent: "#a7f3d0",
+        bg: "#030d10",
+        panel: "rgba(8, 25, 32, 0.86)",
+        text: "#ccfbf1",
+        danger: "#fb7185"
+      },
+      architectVoid: {
+        name: "Architect's Monochrome Void",
+        primary: "#f8fafc",
+        secondary: "#94a3b8",
+        accent: "#38bdf8",
+        bg: "#020617",
+        panel: "rgba(15, 23, 42, 0.88)",
+        text: "#f8fafc",
+        danger: "#ef4444"
+      }
+    };
+
+    const FONT_OPTIONS = [
+      { id: "'Rajdhani', sans-serif", name: "Rajdhani (Classic System HUD)" },
+      { id: "'Orbitron', sans-serif", name: "Orbitron (Cyber Sci-Fi)" },
+      { id: "'Chakra Petch', sans-serif", name: "Chakra Petch (Tactical Angular)" },
+      { id: "'Share Tech Mono', monospace", name: "Share Tech Mono (Terminal Matrix)" },
+      { id: "'Cinzel Decorative', serif", name: "Cinzel Decorative (Sovereign Runic)" },
+      { id: "'Exo 2', sans-serif", name: "Exo 2 (Clean Modern Hunter)" }
+    ];
+
+    const AI_QUEST_TEMPLATES = [
+      { title: "Shadow Sprint Interval", target: 20, unit: "min", xp: 300, gold: 900 },
+      { title: "Deep Focus Dungeon Code/Study", target: 90, unit: "min", xp: 450, gold: 1500 },
+      { title: "Core Mobility & Plank Hold", target: 5, unit: "min", xp: 200, gold: 600 },
+      { title: "Hydration Mana Replenish", target: 8, unit: "glasses", xp: 150, gold: 400 },
+      { title: "Zero Social Media Distraction", target: 4, unit: "hrs", xp: 350, gold: 1100 }
+    ];
+
+    const DEFAULT_STATE = {
+      hunter: {
+        name: "SUNG JIN-WOO",
+        job: "SHADOW MONARCH",
+        title: "The One Who Overcame Adversity",
+        rank: "S-RANK",
+        level: 100,
+        xp: 450,
+        gold: 125000,
+        hp: 12500,
+        maxHp: 12500,
+        mp: 8900,
+        maxMp: 8900,
+        fatigue: 5,
+        ap: 15,
+        streak: 7,
+        avatarUrl: "",
+        stats: [
+          { id: "str", name: "STR (Strength)", val: 210, desc: "Physical raw output & lifting power" },
+          { id: "agi", name: "AGI (Agility)", val: 195, desc: "Speed, reflexes, and evasion" },
+          { id: "vit", name: "VIT (Vitality)", val: 180, desc: "Stamina, health defense & recovery" },
+          { id: "int", name: "INT (Intelligence)", val: 240, desc: "Mana capacity & shadow army limit" },
+          { id: "per", name: "PER (Sense)", val: 188, desc: "Awareness, focus & crit detection" }
+        ]
+      },
+      quests: [
+        { id: "q1", title: "Push-ups", target: 100, current: 60, unit: "reps", xp: 150, gold: 500 },
+        { id: "q2", title: "Sit-ups", target: 100, current: 100, unit: "reps", xp: 150, gold: 500 },
+        { id: "q3", title: "Squats", target: 100, current: 80, unit: "reps", xp: 150, gold: 500 },
+        { id: "q4", title: "Running", target: 10, current: 6, unit: "km", xp: 250, gold: 1000 }
+      ],
+      dailyClaimed: false,
+      penaltyMode: false,
+      inventory: [
+        { id: "i1", name: "Kamish's Wrath", type: "WEAPON", rarity: "MYTHIC", qty: 1, effect: "+300 STR", equipped: true },
+        { id: "i2", name: "Elixir of Life", type: "CONSUMABLE", rarity: "LEGENDARY", qty: 3, effect: "Full HP/MP & 0 Fatigue", equipped: false },
+        { id: "i3", name: "Demon King's Longsword", type: "WEAPON", rarity: "LEGENDARY", qty: 1, effect: "+140 INT & Lightning", equipped: false },
+        { id: "i4", name: "High-Grade Mana Potion", type: "CONSUMABLE", rarity: "EPIC", qty: 8, effect: "Restores 2500 MP", equipped: false }
+      ],
+      store: [
+        { id: "s1", name: "High-Grade Mana Potion", type: "CONSUMABLE", rarity: "EPIC", cost: 2500, effect: "Restores 2500 MP" },
+        { id: "s2", name: "Elixir of Life", type: "CONSUMABLE", rarity: "LEGENDARY", cost: 15000, effect: "Full HP/MP & 0 Fatigue" },
+        { id: "s3", name: "1 Hour Guilt-Free Gaming", type: "REAL_REWARD", rarity: "RARE", cost: 3000, effect: "Real-life leisure reward" },
+        { id: "s4", name: "Cheat Meal Pass", type: "REAL_REWARD", rarity: "EPIC", cost: 8000, effect: "Order favorite meal" }
+      ],
+      shadows: [
+        { id: "sh1", name: "IGRIS", title: "Blood-Red Commander", grade: "MARSHAL", unlocked: true, bonus: "+15% XP Gain", quote: "My liege, point your blade.", imageUrl: "" },
+        { id: "sh2", name: "BERU", title: "Former Ant King", grade: "GRAND MARSHAL", unlocked: true, bonus: "+20% All Stats Aura", quote: "KIIIIEEEEEEK! For the King!", imageUrl: "" },
+        { id: "sh3", name: "BELLION", title: "Grand Marshal of Shadows", grade: "GRAND MARSHAL", unlocked: true, bonus: "+25% Gold & XP", quote: "The Shadow Army awaits your command.", imageUrl: "" },
+        { id: "sh4", name: "TUSK", title: "High Orc Shaman", grade: "COMMANDER", unlocked: false, bonus: "+20% Max MP", quote: "Hymn of the Fire Dragon!", imageUrl: "" },
+        { id: "sh5", name: "KAMISH", title: "Calamity of Humanity", grade: "MYTHIC", unlocked: false, bonus: "+50% Boss Rewards", quote: "ROOOOOOAAAAAR!", imageUrl: "" }
+      ],
+      ui: {
+        preset: "classicCyan",
+        logoStyle: "cyberHex",
+        customColors: {
+          primary: "#00e5ff",
+          secondary: "#0284c7",
+          accent: "#38bdf8",
+          bg: "#030914",
+          panel: "rgba(6, 20, 42, 0.84)",
+          text: "#e0f7fa",
+          danger: "#ff2a55"
+        },
+        useCustomColors: false,
+        windowStyle: "angular",
+        fontFamily: "'Rajdhani', sans-serif",
+        textGlow: 10,
+        borderWidth: 1.5,
+        cornerRadius: 6,
+        glassBlur: 14,
+        scanlines: true,
+        particles: true,
+        particleCount: 42,
+        soundEnabled: true,
+        hapticsEnabled: true,
+        allWindowsView: false,
+        systemTitle: "SYSTEM",
+        btnShape: "chamfer",
+        btnShader: "neon",
+        btnGlow: 12,
+        btnUseCustomColor: false,
+        btnPrimaryColor: "#00e5ff",
+        btnTextColor: "#ffffff"
+      },
+      backend: {
+        baseXpPerLevel: 1000,
+        xpGrowthFactor: 1.15,
+        apPerLevel: 5,
+        hpPerLevel: 250,
+        mpPerLevel: 150
+      },
+      monetization: {
+        proUnlocked: false,
+        redeemedCodeSlot: null,
+        redeemedAt: null,
+        planName: "MONARCH SOVEREIGN PRO PASS",
+        priceAmountInr: "299",
+        priceLabel: "₹299 / $4.99 Lifetime",
+        upiId: "monarchsystem@upi",
+        payeeName: "THE SYSTEM ARCHITECT",
+        whatsappNumber: "",
+        supportEmail: "",
+        externalPaymentUrl: "",
+        burnedHashes: []
+      },
+      googleVault: {
+        bound: false,
+        email: "",
+        displayName: "",
+        vaultPin: "",
+        lastSynced: null
+      }
+    };
+
+    // --- SOUND & HAPTICS ENGINE ---
+    function triggerFeedback(type, soundEnabled = true, hapticsEnabled = true) {
+      if (hapticsEnabled && navigator.vibrate) {
+        if (type === "levelup" || type === "arise") navigator.vibrate([40, 60, 80]);
+        else if (type === "danger") navigator.vibrate([80, 40, 80]);
+        else navigator.vibrate(18);
+      }
+      if (!soundEnabled) return;
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioCtx();
+        const now = ctx.currentTime;
+
+        if (type === "click") {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(980, now);
+          osc.frequency.exponentialRampToValueAtTime(1620, now + 0.055);
+          gain.gain.setValueAtTime(0.07, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.065);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.065);
+        } else if (type === "levelup") {
+          [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(freq, now + idx * 0.075);
+            gain.gain.setValueAtTime(0.12, now + idx * 0.075);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.075 + 0.38);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + idx * 0.075);
+            osc.stop(now + idx * 0.075 + 0.38);
+          });
+        } else if (type === "arise") {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sawtooth";
+          osc.frequency.setValueAtTime(95, now);
+          osc.frequency.exponentialRampToValueAtTime(420, now + 0.65);
+          gain.gain.setValueAtTime(0.16, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.7);
+        } else if (type === "danger") {
+          [300, 210].forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = "square";
+            osc.frequency.setValueAtTime(freq, now + idx * 0.14);
+            gain.gain.setValueAtTime(0.09, now + idx * 0.14);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.14 + 0.13);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + idx * 0.14);
+            osc.stop(now + idx * 0.14 + 0.13);
+          });
+        }
+      } catch (e) {}
+    }
+
+    // --- VECTOR SYSTEM LOGO COMPONENT ---
+    function SystemLogo({ styleId, color, accent }) {
+      if (styleId === "monarchCrown") {
+        return (
+          <svg className="w-10 h-10 shrink-0" viewBox="0 0 100 100" fill="none">
+            <circle cx="50" cy="50" r="44" stroke={color} strokeWidth="2.5" strokeDasharray="6 4" />
+            <path d="M18,70 L26,34 L42,54 L50,20 L58,54 L74,34 L82,70 Z" stroke={color} strokeWidth="4.5" fill={`${accent}22`} />
+            <path d="M22,78 L78,78" stroke={accent} strokeWidth="5" strokeLinecap="round" />
+          </svg>
+        );
+      }
+      if (styleId === "levelCrest") {
+        return (
+          <svg className="w-10 h-10 shrink-0" viewBox="0 0 100 100" fill="none">
+            <path d="M50,8 L88,24 L88,56 C88,77 50,93 50,93 C50,93 12,77 12,56 L12,24 Z" stroke={color} strokeWidth="4.5" />
+            <path d="M30,58 L50,36 L70,58" stroke={accent} strokeWidth="6" strokeLinecap="square" />
+            <path d="M30,74 L50,52 L70,74" stroke={color} strokeWidth="6" strokeLinecap="square" />
+          </svg>
+        );
+      }
+      if (styleId === "architectNode") {
+        return (
+          <svg className="w-10 h-10 shrink-0" viewBox="0 0 100 100" fill="none">
+            <path d="M12,30 L12,12 L30,12 M70,12 L88,12 L88,30 M88,70 L88,88 L70,88 M30,88 L12,88 L12,70" stroke={color} strokeWidth="4.5" />
+            <polygon points="50,18 82,50 50,82 18,50" stroke={accent} strokeWidth="3.5" />
+            <circle cx="50" cy="50" r="10" fill={color} />
+          </svg>
+        );
+      }
+      return (
+        <svg className="w-10 h-10 shrink-0" viewBox="0 0 100 100" fill="none">
+          <polygon points="50,5 92,27 92,73 50,95 8,73 8,27" stroke={color} strokeWidth="5" fill={`${color}15`} />
+          <path d="M65,32 L38,32 L32,44 L68,56 L62,68 L35,68" stroke={accent} strokeWidth="6.5" strokeLinecap="square" />
+        </svg>
+      );
+    }
+
+    // --- SVG RADAR ATTRIBUTE CHART ---
+    function AttributeRadarChart({ stats, primary, accent }) {
+      const topStats = stats.slice(0, 6);
+      const count = topStats.length;
+      if (count < 3) return null;
+      const maxVal = Math.max(250, ...topStats.map((s) => s.val));
+      const cx = 110;
+      const cy = 110;
+      const r = 74;
+
+      const getPoint = (idx, ratio) => {
+        const angle = (Math.PI * 2 * idx) / count - Math.PI / 2;
+        return [
+          cx + r * ratio * Math.cos(angle),
+          cy + r * ratio * Math.sin(angle)
+        ];
+      };
+
+      const polygonPoints = topStats
+        .map((s, idx) => getPoint(idx, Math.min(1, Math.max(0.12, s.val / maxVal))).join(","))
+        .join(" ");
+
+      return (
+        <div className="flex flex-col items-center justify-center p-2">
+          <svg width="220" height="220" viewBox="0 0 220 220">
+            {[0.25, 0.5, 0.75, 1].map((lvl) => (
+              <polygon
+                key={lvl}
+                points={topStats.map((_, idx) => getPoint(idx, lvl).join(",")).join(" ")}
+                fill="none"
+                stroke={`${primary}33`}
+                strokeWidth="1"
+              />
+            ))}
+            {topStats.map((s, idx) => {
+              const [x, y] = getPoint(idx, 1);
+              const [lx, ly] = getPoint(idx, 1.22);
+              return (
+                <g key={s.id}>
+                  <line x1={cx} y1={cy} x2={x} y2={y} stroke={`${primary}33`} strokeWidth="1" />
+                  <text
+                    x={lx}
+                    y={ly}
+                    fill={primary}
+                    fontSize="10"
+                    fontWeight="bold"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                  >
+                    {s.name.split(" ")[0]}
+                  </text>
+                </g>
+              );
+            })}
+            <polygon
+              points={polygonPoints}
+              fill={`${primary}44`}
+              stroke={accent}
+              strokeWidth="2.5"
+            />
+          </svg>
+        </div>
+      );
+    }
+
+    function App() {
+      const [state, setState] = useState(() => {
+        try {
+          const saved = localStorage.getItem("SOLO_SYSTEM_MASTER_PRO_V5");
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            return {
+              ...DEFAULT_STATE,
+              ...parsed,
+              hunter: { ...DEFAULT_STATE.hunter, ...(parsed.hunter || {}) },
+              ui: { ...DEFAULT_STATE.ui, ...(parsed.ui || {}) },
+              backend: { ...DEFAULT_STATE.backend, ...(parsed.backend || {}) },
+              monetization: { ...DEFAULT_STATE.monetization, ...(parsed.monetization || {}) },
+              googleVault: { ...DEFAULT_STATE.googleVault, ...(parsed.googleVault || {}) }
+            };
+          }
+        } catch (e) {}
+        return DEFAULT_STATE;
+      });
+
+      // Persistent Burned Code Hashes Registry (survives character resets)
+      const [burnedHashesRegistry, setBurnedHashesRegistry] = useState(() => {
+        try {
+          const raw = localStorage.getItem("SOLO_SYSTEM_BURNED_HASHES_V5");
+          if (raw) return JSON.parse(raw);
+        } catch (e) {}
+        return [];
+      });
+
+      const [activeTab, setActiveTab] = useState("status");
+      const [toast, setToast] = useState(null);
+      const [cinematicBanner, setCinematicBanner] = useState(null);
+      const [commandInput, setCommandInput] = useState("");
+      const [showGoogleModal, setShowGoogleModal] = useState(false);
+      const [showIdModal, setShowIdModal] = useState(false);
+      const [showQuickDrawer, setShowQuickDrawer] = useState(false);
+      const [showProModal, setShowProModal] = useState(false);
+      const [showCheckoutGateway, setShowCheckoutGateway] = useState(false);
+      const [showInstallModal, setShowInstallModal] = useState(false);
+      const [licenseInput, setLicenseInput] = useState("");
+      const [utrInput, setUtrInput] = useState("");
+      const [buyerEmailInput, setBuyerEmailInput] = useState("");
+      const [paymentSubmitted, setPaymentSubmitted] = useState(false);
+      const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
+      const [adminBurnSlotInput, setAdminBurnSlotInput] = useState("");
+
+      // Forms
+      const [newStatName, setNewStatName] = useState("");
+      const [newStatDesc, setNewStatDesc] = useState("");
+      const [newQuestTitle, setNewQuestTitle] = useState("");
+      const [newQuestTarget, setNewQuestTarget] = useState(50);
+      const [newQuestUnit, setNewQuestUnit] = useState("reps");
+      const [newStoreItemName, setNewStoreItemName] = useState("");
+      const [newStoreItemCost, setNewStoreItemCost] = useState(2000);
+      const [newStoreItemEffect, setNewStoreItemEffect] = useState("");
+
+      // Custom Shadow Forge
+      const [shadowName, setShadowName] = useState("");
+      const [shadowTitle, setShadowTitle] = useState("");
+      const [shadowGrade, setShadowGrade] = useState("COMMANDER");
+      const [shadowBonus, setShadowBonus] = useState("+15% All Stats");
+      const [shadowQuote, setShadowQuote] = useState("I answer the Monarch's call.");
+      const [shadowImageUrl, setShadowImageUrl] = useState("");
+
+      // Google Binding Modal inputs
+      const [gEmail, setGEmail] = useState(state.googleVault.email || "");
+      const [gName, setGName] = useState(state.googleVault.displayName || state.hunter.name);
+      const [gPin, setGPin] = useState(state.googleVault.vaultPin || "");
+
+      // Dungeon Timer
+      const [dungeonMinutes, setDungeonMinutes] = useState(25);
+      const [dungeonSecondsLeft, setDungeonSecondsLeft] = useState(0);
+      const [dungeonRunning, setDungeonRunning] = useState(false);
+
+      const canvasRef = useRef(null);
+
+      // Active Color Palette
+      const palette = useMemo(() => {
+        if (state.penaltyMode) return COLOR_PRESETS.bloodPenalty;
+        if (state.ui.useCustomColors) return state.ui.customColors;
+        return COLOR_PRESETS[state.ui.preset] || COLOR_PRESETS.classicCyan;
+      }, [state.ui.preset, state.ui.useCustomColors, state.ui.customColors, state.penaltyMode]);
+
+      // Listen for Native PWA Install Prompt
+      useEffect(() => {
+        const handler = (e) => {
+          e.preventDefault();
+          setDeferredInstallPrompt(e);
+        };
+        window.addEventListener("beforeinstallprompt", handler);
+        return () => window.removeEventListener("beforeinstallprompt", handler);
+      }, []);
+
+      // Ambient Mana Particle Canvas Engine
+      useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas || !state.ui.particles) return;
+        const ctx = canvas.getContext("2d");
+        let animId;
+        const resize = () => {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+        };
+        resize();
+        window.addEventListener("resize", resize);
+
+        const count = state.ui.particleCount || 40;
+        const particles = Array.from({ length: count }, () => ({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vx: (Math.random() - 0.5) * 0.45,
+          vy: -Math.random() * 0.65 - 0.15,
+          size: Math.random() * 2.4 + 0.8,
+          alpha: Math.random() * 0.65 + 0.15
+        }));
+
+        const render = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          particles.forEach((p) => {
+            p.x += p.vx;
+            p.y += p.vy;
+            if (p.y < 0) p.y = canvas.height;
+            if (p.x < 0) p.x = canvas.width;
+            if (p.x > canvas.width) p.x = 0;
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fillStyle = palette.primary;
+            ctx.globalAlpha = p.alpha;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = palette.primary;
+            ctx.fill();
+          });
+          animId = requestAnimationFrame(render);
+        };
+        render();
+        return () => {
+          cancelAnimationFrame(animId);
+          window.removeEventListener("resize", resize);
+        };
+      }, [state.ui.particles, state.ui.particleCount, palette.primary]);
+
+      // Save to LocalStorage + Google Account Vault slot
+      useEffect(() => {
+        try {
+          localStorage.setItem("SOLO_SYSTEM_MASTER_PRO_V5", JSON.stringify(state));
+          if (state.googleVault?.bound && state.googleVault?.email) {
+            const key = `SOLO_GVAULT_${state.googleVault.email.toLowerCase().trim()}`;
+            localStorage.setItem(key, JSON.stringify({ ...state, savedAt: new Date().toISOString() }));
+          }
+        } catch (e) {}
+      }, [state]);
+
+      useEffect(() => {
+        try {
+          localStorage.setItem("SOLO_SYSTEM_BURNED_HASHES_V5", JSON.stringify(burnedHashesRegistry));
+        } catch (e) {}
+      }, [burnedHashesRegistry]);
+
+      // Pomodoro Dungeon Countdown
+      useEffect(() => {
+        if (!dungeonRunning) return;
+        const interval = setInterval(() => {
+          setDungeonSecondsLeft((prev) => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              setDungeonRunning(false);
+              gainRewards(600, 3000, "S-RANK INSTANT DUNGEON BOSS SLAIN!");
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        return () => clearInterval(interval);
+      }, [dungeonRunning]);
+
+      const triggerBanner = (title, subtitle) => {
+        setCinematicBanner({ title, subtitle, id: Date.now() });
+        setTimeout(() => {
+          setCinematicBanner((cur) => (cur && cur.title === title ? null : cur));
+        }, 2600);
+      };
+
+      const notify = (msg, type = "info") => {
+        triggerFeedback(type, state.ui.soundEnabled, state.ui.hapticsEnabled);
+        setToast({ msg, type, id: Date.now() });
+        setTimeout(() => {
+          setToast((cur) => (cur && cur.msg === msg ? null : cur));
+        }, 4200);
+      };
+
+      const maxXpForLevel = Math.floor(
+        state.backend.baseXpPerLevel * Math.pow(state.backend.xpGrowthFactor, Math.max(0, state.hunter.level - 1))
+      );
+
+      // Self-Contained HTML File Downloader (Solves mobile download issues!)
+      const downloadSelfHtmlFile = () => {
+        try {
+          const fullHtml = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+          const blob = new Blob([fullHtml], { type: "text/html;charset=utf-8" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "index.html";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          notify("Standalone index.html downloaded to your device!", "levelup");
+        } catch (err) {
+          notify("Unable to trigger file download in this preview frame.", "danger");
+        }
+      };
+
+      // Install Native PWA Handler
+      const handleInstallApp = async () => {
+        if (deferredInstallPrompt) {
+          deferredInstallPrompt.prompt();
+          const { outcome } = await deferredInstallPrompt.userChoice;
+          if (outcome === "accepted") {
+            notify("THE SYSTEM installed to your device!", "levelup");
+          }
+          setDeferredInstallPrompt(null);
+        } else {
+          setShowInstallModal(true);
+        }
+      };
+
+      // Universal Button & Window Style Helpers
+      const getButtonStyle = (variant = "primary") => {
+        const baseColor = state.ui.btnUseCustomColor
+          ? state.ui.btnPrimaryColor
+          : variant === "danger"
+          ? palette.danger
+          : variant === "gold"
+          ? "#fbbf24"
+          : variant === "secondary"
+          ? palette.secondary
+          : palette.primary;
+
+        const textColor = state.ui.btnUseCustomColor ? state.ui.btnTextColor : "#ffffff";
+
+        let borderRadius = `${state.ui.cornerRadius}px`;
+        let clipPath = "none";
+        if (state.ui.btnShape === "chamfer") {
+          clipPath = "polygon(8px 0%, 100% 0%, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0% 100%, 0% 8px)";
+          borderRadius = "0px";
+        } else if (state.ui.btnShape === "sharp") {
+          borderRadius = "0px";
+        } else if (state.ui.btnShape === "capsule") {
+          borderRadius = "9999px";
+        } else if (state.ui.btnShape === "hex") {
+          clipPath = "polygon(10px 0%, calc(100% - 10px) 0%, 100% 50%, calc(100% - 10px) 100%, 10px 100%, 0% 50%)";
+        }
+
+        let background = `${baseColor}28`;
+        let border = `1.5px solid ${baseColor}`;
+        if (state.ui.btnShader === "gradient") {
+          background = `linear-gradient(135deg, ${baseColor}66, ${palette.secondary}66)`;
+        } else if (state.ui.btnShader === "solid") {
+          background = baseColor;
+        } else if (state.ui.btnShader === "wireframe") {
+          background = "transparent";
+          border = `1.5px dashed ${baseColor}`;
+        } else if (state.ui.btnShader === "ghost") {
+          background = "rgba(255,255,255,0.04)";
+          border = `1px solid ${baseColor}55`;
+        }
+
+        return {
+          background,
+          border,
+          borderRadius,
+          clipPath,
+          color: state.ui.btnShader === "solid" ? "#020617" : textColor,
+          boxShadow: `0 0 ${state.ui.btnGlow}px ${baseColor}44`,
+          fontFamily: state.ui.fontFamily,
+          cursor: "pointer"
+        };
+      };
+
+      const getWindowStyle = () => {
+        let clipPath = "none";
+        let borderStyle = "solid";
+        if (state.ui.windowStyle === "angular") {
+          clipPath = "polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px))";
+        } else if (state.ui.windowStyle === "hex") {
+          clipPath = "polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px)";
+        } else if (state.ui.windowStyle === "brutal") {
+          borderStyle = "double";
+        }
+
+        return {
+          background: palette.panel,
+          border: `${state.ui.borderWidth}px ${borderStyle} ${palette.primary}88`,
+          borderRadius: `${state.ui.cornerRadius}px`,
+          backdropFilter: `blur(${state.ui.glassBlur}px)`,
+          boxShadow: `0 8px 32px rgba(0,0,0,0.6), 0 0 25px ${palette.primary}22, inset 0 0 18px ${palette.primary}14`,
+          clipPath
+        };
+      };
+
+      // Leveling & Reward Engine
+      const gainRewards = (xpDelta, goldDelta, label = "REWARD ACQUIRED") => {
+        const mult = state.monetization.proUnlocked ? 2 : 1;
+        const finalXp = xpDelta * mult;
+        const finalGold = goldDelta * mult;
+
+        setState((prev) => {
+          let newXp = prev.hunter.xp + finalXp;
+          let newLevel = prev.hunter.level;
+          let newAp = prev.hunter.ap;
+          let newMaxHp = prev.hunter.maxHp;
+          let newMaxMp = prev.hunter.maxMp;
+          let leveledUp = false;
+
+          let reqXp = Math.floor(
+            prev.backend.baseXpPerLevel * Math.pow(prev.backend.xpGrowthFactor, Math.max(0, newLevel - 1))
+          );
+
+          while (newXp >= reqXp) {
+            newXp -= reqXp;
+            newLevel += 1;
+            newAp += prev.backend.apPerLevel;
+            newMaxHp += prev.backend.hpPerLevel;
+            newMaxMp += prev.backend.mpPerLevel;
+            leveledUp = true;
+            reqXp = Math.floor(
+              prev.backend.baseXpPerLevel * Math.pow(prev.backend.xpGrowthFactor, Math.max(0, newLevel - 1))
+            );
+          }
+
+          if (leveledUp) {
+            setTimeout(() => {
+              triggerBanner("LEVEL UP!", `RANK ASCENSION // LEVEL ${newLevel} (+${prev.backend.apPerLevel} AP)`);
+              notify(`LEVEL UP! Reached Level ${newLevel}`, "levelup");
+            }, 40);
+          } else {
+            setTimeout(() => notify(`${label}: +${finalXp} XP, +${finalGold} G`, "info"), 40);
+          }
+
+          return {
+            ...prev,
+            hunter: {
+              ...prev.hunter,
+              level: newLevel,
+              xp: newXp,
+              gold: prev.hunter.gold + finalGold,
+              ap: newAp,
+              maxHp: newMaxHp,
+              hp: leveledUp ? newMaxHp : prev.hunter.hp,
+              maxMp: newMaxMp,
+              mp: leveledUp ? newMaxMp : prev.hunter.mp
+            }
+          };
+        });
+      };
+
+      // Stat Handlers
+      const allocateStat = (id, delta) => {
+        setState((prev) => {
+          if (delta > 0 && prev.hunter.ap < delta) {
+            notify("Insufficient Ability Points (AP)!", "danger");
+            return prev;
+          }
+          triggerFeedback("click", prev.ui.soundEnabled, prev.ui.hapticsEnabled);
+          return {
+            ...prev,
+            hunter: {
+              ...prev.hunter,
+              ap: prev.hunter.ap - delta,
+              stats: prev.hunter.stats.map((s) =>
+                s.id === id ? { ...s, val: Math.max(1, s.val + delta) } : s
+              )
+            }
+          };
+        });
+      };
+
+      const addCustomStat = () => {
+        if (!newStatName.trim()) return;
+        setState((prev) => ({
+          ...prev,
+          hunter: {
+            ...prev.hunter,
+            stats: [
+              ...prev.hunter.stats,
+              {
+                id: "st_" + Date.now(),
+                name: newStatName.trim().toUpperCase(),
+                val: 25,
+                desc: newStatDesc.trim() || "Custom Hunter Attribute"
+              }
+            ]
+          }
+        }));
+        setNewStatName("");
+        setNewStatDesc("");
+        notify("Custom attribute registered into Status Window.");
+      };
+
+      const removeStat = (id) => {
+        setState((prev) => ({
+          ...prev,
+          hunter: {
+            ...prev.hunter,
+            stats: prev.hunter.stats.filter((s) => s.id !== id)
+          }
+        }));
+      };
+
+      // Photo Upload Handler
+      const handlePhotoUpload = (e, target = "hunter") => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (target === "hunter") {
+            setState((prev) => ({
+              ...prev,
+              hunter: { ...prev.hunter, avatarUrl: reader.result }
+            }));
+            notify("Hunter ID Biometric Photo Updated!");
+          } else if (target === "shadow") {
+            setShadowImageUrl(reader.result);
+            notify("Shadow Soldier Portrait Loaded!");
+          }
+        };
+        reader.readAsDataURL(file);
+      };
+
+      // Quest Handlers
+      const updateQuestProgress = (qId, delta) => {
+        setState((prev) => ({
+          ...prev,
+          quests: prev.quests.map((q) => {
+            if (q.id !== qId) return q;
+            const nextVal = Math.max(0, Math.min(q.target, q.current + delta));
+            return { ...q, current: nextVal };
+          })
+        }));
+        triggerFeedback("click", state.ui.soundEnabled, state.ui.hapticsEnabled);
+      };
+
+      const claimDailyReward = () => {
+        const allDone = state.quests.every((q) => q.current >= q.target);
+        if (!allDone) {
+          notify("Complete all Daily Quests before claiming the System Reward!", "danger");
+          return;
+        }
+        if (state.dailyClaimed) {
+          notify("Daily Quest reward already claimed today!", "info");
+          return;
+        }
+        setState((prev) => ({
+          ...prev,
+          dailyClaimed: true,
+          penaltyMode: false,
+          hunter: {
+            ...prev.hunter,
+            streak: (prev.hunter.streak || 1) + 1,
+            hp: prev.hunter.maxHp,
+            mp: prev.hunter.maxMp,
+            fatigue: 0,
+            ap: prev.hunter.ap + 3
+          }
+        }));
+        triggerBanner("DAILY QUEST CLEARED", "FULL STATUS RECOVERY & +3 ABILITY POINTS");
+        gainRewards(600, 3000, "DAILY QUEST COMPLETED");
+      };
+
+      const generateAiSideQuest = () => {
+        const pick = AI_QUEST_TEMPLATES[Math.floor(Math.random() * AI_QUEST_TEMPLATES.length)];
+        setState((prev) => ({
+          ...prev,
+          quests: [
+            ...prev.quests,
+            {
+              id: "aiq_" + Date.now(),
+              title: `[EMERGENCY] ${pick.title}`,
+              target: pick.target,
+              current: 0,
+              unit: pick.unit,
+              xp: pick.xp,
+              gold: pick.gold
+            }
+          ]
+        }));
+        notify(`Emergency Directive Issued: ${pick.title}!`, "levelup");
+      };
+
+      const addCustomQuest = () => {
+        if (!newQuestTitle.trim()) return;
+        setState((prev) => ({
+          ...prev,
+          quests: [
+            ...prev.quests,
+            {
+              id: "q_" + Date.now(),
+              title: newQuestTitle.trim(),
+              target: Number(newQuestTarget) || 50,
+              current: 0,
+              unit: newQuestUnit || "reps",
+              xp: 200,
+              gold: 600
+            }
+          ]
+        }));
+        setNewQuestTitle("");
+        notify("New Daily Directive added.");
+      };
+
+      // Inventory & Store
+      const useOrEquipItem = (item) => {
+        if (item.type === "WEAPON") {
+          setState((prev) => ({
+            ...prev,
+            inventory: prev.inventory.map((i) =>
+              i.id === item.id ? { ...i, equipped: !i.equipped } : i
+            )
+          }));
+          notify(`${item.name} ${item.equipped ? "unequipped" : "equipped"}!`);
+        } else {
+          setState((prev) => ({
+            ...prev,
+            hunter: {
+              ...prev.hunter,
+              hp: prev.hunter.maxHp,
+              mp: prev.hunter.maxMp,
+              fatigue: 0
+            },
+            inventory: prev.inventory
+              .map((i) => (i.id === item.id ? { ...i, qty: i.qty - 1 } : i))
+              .filter((i) => i.qty > 0)
+          }));
+          notify(`Consumed ${item.name}! Full Status Recovery applied.`, "levelup");
+        }
+      };
+
+      const buyStoreItem = (sItem) => {
+        if (state.hunter.gold < sItem.cost) {
+          notify("Insufficient Gold in System Wallet!", "danger");
+          return;
+        }
+        setState((prev) => {
+          const existing = prev.inventory.find((i) => i.name === sItem.name);
+          const updatedInv = existing
+            ? prev.inventory.map((i) => (i.name === sItem.name ? { ...i, qty: i.qty + 1 } : i))
+            : [
+                ...prev.inventory,
+                {
+                  id: "inv_" + Date.now(),
+                  name: sItem.name,
+                  type: sItem.type,
+                  rarity: sItem.rarity,
+                  qty: 1,
+                  effect: sItem.effect,
+                  equipped: false
+                }
+              ];
+          return {
+            ...prev,
+            hunter: { ...prev.hunter, gold: prev.hunter.gold - sItem.cost },
+            inventory: updatedInv
+          };
+        });
+        notify(`Purchased [${sItem.name}]! Added to Inventory.`);
+      };
+
+      const addCustomStoreItem = () => {
+        if (!newStoreItemName.trim()) return;
+        setState((prev) => ({
+          ...prev,
+          store: [
+            ...prev.store,
+            {
+              id: "st_" + Date.now(),
+              name: newStoreItemName.trim(),
+              type: "REAL_REWARD",
+              rarity: "EPIC",
+              cost: Number(newStoreItemCost) || 1500,
+              effect: newStoreItemEffect.trim() || "Custom Hunter Reward"
+            }
+          ]
+        }));
+        setNewStoreItemName("");
+        setNewStoreItemEffect("");
+        notify("Custom Reward added to System Store.");
+      };
+
+      // Shadow Army Extraction & Forge
+      const toggleShadowArise = (shId) => {
+        setState((prev) => ({
+          ...prev,
+          shadows: prev.shadows.map((s) =>
+            s.id === shId ? { ...s, unlocked: !s.unlocked } : s
+          )
+        }));
+        triggerBanner("A R I S E", "SHADOW EXTRACTION PROTOCOL EXECUTED");
+        notify("ARISE! Shadow Soldier status updated.", "arise");
+      };
+
+      const createCustomShadow = () => {
+        if (!shadowName.trim()) {
+          notify("Enter a Shadow Soldier name before calling ARISE!", "danger");
+          return;
+        }
+        const newShadow = {
+          id: "sh_" + Date.now(),
+          name: shadowName.trim().toUpperCase(),
+          title: shadowTitle.trim() || "Shadow Legionnaire",
+          grade: shadowGrade,
+          unlocked: true,
+          bonus: shadowBonus.trim() || "+15% All Stats",
+          quote: shadowQuote.trim() || "I obey the Shadow Monarch.",
+          imageUrl: shadowImageUrl
+        };
+        setState((prev) => ({
+          ...prev,
+          shadows: [newShadow, ...prev.shadows]
+        }));
+        setShadowName("");
+        setShadowTitle("");
+        setShadowImageUrl("");
+        triggerBanner("A R I S E", `${newShadow.name} HAS JOINED THE SHADOW LEGION`);
+        notify(`"ARISE!" — [${newShadow.name}] extracted!`, "arise");
+      };
+
+      // Command Console Directives
+      const executeCommand = (rawCmd) => {
+        const cmd = (rawCmd || commandInput).trim().toUpperCase();
+        if (!cmd) return;
+        setCommandInput("");
+        if (cmd === "ARISE") {
+          setActiveTab("shadows");
+          triggerBanner("A R I S E", "SUMMONING THE MONARCH'S LEGION");
+          notify("ARISE! Calling forth the Shadow Army...", "arise");
+        } else if (cmd === "RECOVER") {
+          setState((prev) => ({
+            ...prev,
+            hunter: { ...prev.hunter, hp: prev.hunter.maxHp, mp: prev.hunter.maxMp, fatigue: 0 }
+          }));
+          notify("Full Status Recovery Activated!", "levelup");
+        } else if (cmd === "LEVEL UP") {
+          gainRewards(maxXpForLevel, 5000, "DIRECTIVE: INSTANT LEVEL UP");
+        } else if (cmd === "CLAIM") {
+          claimDailyReward();
+        } else if (cmd === "STATUS") {
+          setActiveTab("status");
+          notify("Opening Hunter Status Window.");
+        } else if (cmd === "PENALTY") {
+          setState((prev) => ({ ...prev, penaltyMode: !prev.penaltyMode }));
+          triggerBanner("PENALTY ZONE", "SURVIVE THE BLOOD-RED TRIAL");
+          notify("Penalty Zone Protocol Toggled!", "danger");
+        } else {
+          notify(`Executed System Directive: [${cmd}]`);
+        }
+      };
+
+      // Google Account Identity Vault Binding
+      const bindGoogleVault = () => {
+        if (!gEmail.trim() || !gEmail.includes("@")) {
+          notify("Please enter a valid Google Email (@gmail.com or Workspace).", "danger");
+          return;
+        }
+        const cleanEmail = gEmail.trim().toLowerCase();
+        setState((prev) => ({
+          ...prev,
+          hunter: {
+            ...prev.hunter,
+            name: gName.trim() ? gName.trim().toUpperCase() : prev.hunter.name
+          },
+          googleVault: {
+            ...prev.googleVault,
+            bound: true,
+            email: cleanEmail,
+            displayName: gName.trim() || prev.hunter.name,
+            vaultPin: gPin,
+            lastSynced: new Date().toLocaleTimeString()
+          }
+        }));
+        setShowGoogleModal(false);
+        notify(`Bound privately to Google Vault: ${cleanEmail}`, "levelup");
+      };
+
+      const restoreFromGoogleVault = () => {
+        if (!gEmail.trim()) return;
+        const key = `SOLO_GVAULT_${gEmail.trim().toLowerCase()}`;
+        const saved = localStorage.getItem(key);
+        if (!saved) {
+          notify("No existing cloud snapshot found for that Google Email on this device.", "danger");
+          return;
+        }
+        try {
+          const parsed = JSON.parse(saved);
+          setState(parsed);
+          setShowGoogleModal(false);
+          notify(`Restored Hunter Data from ${gEmail.trim()}!`, "levelup");
+        } catch (e) {
+          notify("Failed to parse Vault snapshot.", "danger");
+        }
+      };
+
+      // --- 100 SINGLE-USE HIDDEN ACCESS CODE VERIFICATION & BURN ENGINE ---
+      const verifyMonarchLicense = () => {
+        const cleanCode = licenseInput.trim().toUpperCase();
+        if (!cleanCode) {
+          notify("Please enter a Monarch Pro Pass access code.", "danger");
+          return;
+        }
+
+        const candidateHash = sha256Pure(VAULT_SALT + cleanCode);
+        const slotIndex = VALID_MONARCH_HASHES.indexOf(candidateHash);
+
+        if (slotIndex === -1) {
+          notify("INVALID ACCESS CODE! Check your code and try again.", "danger");
+          return;
+        }
+
+        const allBurned = new Set([
+          ...(burnedHashesRegistry || []),
+          ...(state.monetization.burnedHashes || [])
+        ]);
+
+        if (allBurned.has(candidateHash)) {
+          notify(`CODE ALREADY USED! Access Code #${String(slotIndex + 1).padStart(3, "0")} has already been redeemed and permanently disabled.`, "danger");
+          return;
+        }
+
+        // Burn this code permanently so it can NEVER be reused!
+        const updatedBurned = Array.from(new Set([...allBurned, candidateHash]));
+        setBurnedHashesRegistry(updatedBurned);
+
+        const slotLabel = `#${String(slotIndex + 1).padStart(3, "0")}`;
+        setState((prev) => ({
+          ...prev,
+          monetization: {
+            ...prev.monetization,
+            proUnlocked: true,
+            redeemedCodeSlot: slotLabel,
+            redeemedAt: new Date().toLocaleString(),
+            burnedHashes: updatedBurned
+          }
+        }));
+        setLicenseInput("");
+        setShowProModal(false);
+        setShowCheckoutGateway(false);
+        triggerBanner("MONARCH PRO UNLOCKED", `SINGLE-USE CODE ${slotLabel} VERIFIED & LOCKED`);
+        notify(`Monarch Pro Pass Activated via Single-Use Code ${slotLabel}! (Code is now permanently disabled for future use)`, "levelup");
+      };
+
+      // Admin manual burn slot (#1 to #100)
+      const manualBurnSlot = () => {
+        const num = parseInt(adminBurnSlotInput, 10);
+        if (isNaN(num) || num < 1 || num > 100) {
+          notify("Enter a valid Code Slot number between 1 and 100.", "danger");
+          return;
+        }
+        const targetHash = VALID_MONARCH_HASHES[num - 1];
+        const updated = Array.from(new Set([...burnedHashesRegistry, ...(state.monetization.burnedHashes || []), targetHash]));
+        setBurnedHashesRegistry(updated);
+        setState((prev) => ({
+          ...prev,
+          monetization: { ...prev.monetization, burnedHashes: updated }
+        }));
+        setAdminBurnSlotInput("");
+        notify(`Code Slot #${String(num).padStart(3, "0")} has been permanently disabled/burned!`);
+      };
+
+      // UPI Deep Link & QR Generator
+      const upiDeepLink = useMemo(() => {
+        const pa = encodeURIComponent(state.monetization.upiId || "monarchsystem@upi");
+        const pn = encodeURIComponent(state.monetization.payeeName || "THE SYSTEM ARCHITECT");
+        const am = encodeURIComponent(state.monetization.priceAmountInr || "299");
+        const tn = encodeURIComponent(`Monarch Pro Pass - ${state.hunter.name}`);
+        return `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
+      }, [state.monetization.upiId, state.monetization.payeeName, state.monetization.priceAmountInr, state.hunter.name]);
+
+      const qrCodeImageUrl = useMemo(() => {
+        return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data=${encodeURIComponent(upiDeepLink)}`;
+      }, [upiDeepLink]);
+
+      const handleVerifyPaymentReceipt = () => {
+        if (!utrInput.trim() || utrInput.trim().length < 6) {
+          notify("Please enter a valid 12-digit UPI Ref / UTR or Transaction ID.", "danger");
+          return;
+        }
+        setPaymentSubmitted(true);
+        notify("Payment Receipt Logged! Send the verification message to receive your unique Single-Use Access Code.", "levelup");
+
+        const msgText = `Hello System Architect! I have completed the payment of ₹${state.monetization.priceAmountInr} for the MONARCH PRO PASS.\n\n• Hunter Name: ${state.hunter.name}\n• UTR / Transaction ID: ${utrInput.trim()}\n• Email: ${buyerEmailInput || "N/A"}\n\nPlease issue my single-use Monarch Pro Pass Access Code!`;
+
+        if (state.monetization.whatsappNumber && state.monetization.whatsappNumber.trim()) {
+          const cleanPhone = state.monetization.whatsappNumber.replace(/\D/g, "");
+          window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msgText)}`, "_blank");
+        } else if (state.monetization.supportEmail && state.monetization.supportEmail.trim()) {
+          window.open(`mailto:${state.monetization.supportEmail.trim()}?subject=${encodeURIComponent("Monarch Pro Pass Payment UTR: " + utrInput.trim())}&body=${encodeURIComponent(msgText)}`, "_blank");
+        }
+      };
+
+      const exportSystemJson = () => {
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `solo_system_${state.hunter.name.toLowerCase().replace(/\s+/g, "_")}.json`;
+        a.click();
+        notify("Exported encrypted System JSON backup.");
+      };
+
+      const importSystemJson = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(reader.result);
+            setState((prev) => ({ ...prev, ...parsed }));
+            notify("System Backup Restored Successfully!", "levelup");
+          } catch (err) {
+            notify("Invalid System JSON file.", "danger");
+          }
+        };
+        reader.readAsText(file);
+      };
+
+      const totalBurnedCount = new Set([
+        ...(burnedHashesRegistry || []),
+        ...(state.monetization.burnedHashes || [])
+      ]).size;
+
+      // --- SUB-WINDOWS ---
+      const renderStatusWindow = () => (
+        <div style={getWindowStyle()} className="p-6 relative system-window-anim">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4 mb-6" style={{ borderColor: `${palette.primary}44` }}>
+            <div className="flex items-center gap-4">
+              {/* Hunter ID Avatar */}
+              <div className="relative group w-20 h-20 rounded-lg overflow-hidden border-2 flex items-center justify-center bg-slate-950" style={{ borderColor: palette.primary, boxShadow: `0 0 18px ${palette.primary}55` }}>
+                {state.hunter.avatarUrl ? (
+                  <img src={state.hunter.avatarUrl} alt="Hunter ID" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="text-center text-xs font-bold opacity-80" style={{ color: palette.primary }}>
+                    HUNTER<br />ID
+                  </div>
+                )}
+                <label className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] font-bold cursor-pointer transition-opacity text-white text-center p-1">
+                  UPLOAD PHOTO
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoUpload(e, "hunter")} />
+                </label>
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs px-2 py-0.5 font-bold rounded" style={{ background: `${palette.primary}33`, color: palette.primary, border: `1px solid ${palette.primary}` }}>
+                    {state.hunter.rank}
+                  </span>
+                  <span className="text-xs tracking-widest opacity-80">[{state.hunter.job}]</span>
+                  {state.monetization.proUnlocked && (
+                    <span className="text-[10px] px-2 py-0.5 font-black rounded bg-amber-500/20 text-amber-300 border border-amber-400">
+                      ★ MONARCH PRO ({state.monetization.redeemedCodeSlot || "ACTIVE"})
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-2xl md:text-3xl font-black tracking-wider mt-1" style={{ textShadow: `0 0 ${state.ui.textGlow}px ${palette.primary}` }}>
+                  {state.hunter.name}
+                </h2>
+                <p className="text-xs opacity-80 italic">Title: "{state.hunter.title}" • Streak: 🔥 {state.hunter.streak || 1} Days</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <div className="text-3xl font-black" style={{ color: palette.primary, textShadow: `0 0 ${state.ui.textGlow}px ${palette.primary}` }}>
+                  LV. {state.hunter.level}
+                </div>
+                <div className="text-xs opacity-80">
+                  XP: {state.hunter.xp.toLocaleString()} / {maxXpForLevel.toLocaleString()}
+                </div>
+              </div>
+              <button onClick={() => setShowIdModal(true)} style={getButtonStyle("secondary")} className="px-3 py-2 text-xs font-bold uppercase tracking-wider">
+                Edit ID & Photo
+              </button>
+            </div>
+          </div>
+
+          {/* HP / MP / Fatigue Bars */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="p-3 rounded bg-black/40 border" style={{ borderColor: `${palette.primary}33` }}>
+              <div className="flex justify-between text-xs font-bold mb-1">
+                <span>HP (HEALTH)</span>
+                <span>{state.hunter.hp} / {state.hunter.maxHp}</span>
+              </div>
+              <div className="w-full h-2.5 bg-slate-900 rounded overflow-hidden">
+                <div className="h-full transition-all duration-500" style={{ width: `${Math.min(100, (state.hunter.hp / state.hunter.maxHp) * 100)}%`, background: "#ef4444", boxShadow: "0 0 10px #ef4444" }} />
+              </div>
+            </div>
+
+            <div className="p-3 rounded bg-black/40 border" style={{ borderColor: `${palette.primary}33` }}>
+              <div className="flex justify-between text-xs font-bold mb-1">
+                <span>MP (MANA)</span>
+                <span>{state.hunter.mp} / {state.hunter.maxMp}</span>
+              </div>
+              <div className="w-full h-2.5 bg-slate-900 rounded overflow-hidden">
+                <div className="h-full transition-all duration-500" style={{ width: `${Math.min(100, (state.hunter.mp / state.hunter.maxMp) * 100)}%`, background: palette.primary, boxShadow: `0 0 10px ${palette.primary}` }} />
+              </div>
+            </div>
+
+            <div className="p-3 rounded bg-black/40 border flex items-center justify-between" style={{ borderColor: `${palette.primary}33` }}>
+              <div>
+                <div className="text-xs font-bold opacity-75">FATIGUE: {state.hunter.fatigue}%</div>
+                <div className="text-lg font-black" style={{ color: "#fbbf24" }}>
+                  GOLD: {state.hunter.gold.toLocaleString()} G
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-xs opacity-75 block">AVAILABLE AP</span>
+                <span className="text-2xl font-black" style={{ color: palette.accent }}>{state.hunter.ap}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats List + Radar Chart + Custom Attribute */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-5 space-y-2.5">
+              <h3 className="text-sm font-bold tracking-widest uppercase mb-2" style={{ color: palette.primary }}>
+                [ HUNTER ATTRIBUTES ]
+              </h3>
+              {state.hunter.stats.map((st) => (
+                <div key={st.id} className="flex items-center justify-between p-2.5 rounded bg-black/40 border" style={{ borderColor: `${palette.primary}33` }}>
+                  <div>
+                    <div className="font-bold text-sm">{st.name}</div>
+                    <div className="text-[11px] opacity-65">{st.desc}</div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xl font-black px-2" style={{ color: palette.primary }}>{st.val}</span>
+                    <button onClick={() => allocateStat(st.id, 1)} style={getButtonStyle("primary")} className="px-2.5 py-1 text-xs font-bold">
+                      +1
+                    </button>
+                    <button onClick={() => allocateStat(st.id, 5)} style={getButtonStyle("secondary")} className="px-2 py-1 text-xs font-bold">
+                      +5
+                    </button>
+                    {st.id.startsWith("st_") && (
+                      <button onClick={() => removeStat(st.id)} style={getButtonStyle("danger")} className="px-2 py-1 text-xs font-bold">
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Live Pentagon Radar Chart */}
+            <div className="lg:col-span-3 p-4 rounded bg-black/40 border flex flex-col items-center justify-center" style={{ borderColor: `${palette.primary}33` }}>
+              <span className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: palette.primary }}>
+                [ BIOMETRIC RADAR ]
+              </span>
+              <AttributeRadarChart stats={state.hunter.stats} primary={palette.primary} accent={palette.accent} />
+              <div className="text-center mt-2">
+                <span className="text-[11px] opacity-70 block">COMBAT POWER RATING</span>
+                <span className="text-xl font-black" style={{ color: palette.accent }}>
+                  {(state.hunter.level * 150 + state.hunter.stats.reduce((a, b) => a + b.val * 25, 0)).toLocaleString()} CP
+                </span>
+              </div>
+            </div>
+
+            {/* Add Custom Attribute Box */}
+            <div className="lg:col-span-4 p-4 rounded bg-black/40 border flex flex-col justify-between" style={{ borderColor: `${palette.primary}33` }}>
+              <div>
+                <h3 className="text-sm font-bold tracking-widest uppercase mb-2" style={{ color: palette.primary }}>
+                  [ REGISTER CUSTOM REAL-LIFE STAT ]
+                </h3>
+                <p className="text-xs opacity-75 mb-3">
+                  Add your own custom attributes (e.g. CODING, PHYSIQUE, DISCIPLINE, WEALTH) to level up in real life.
+                </p>
+                <div className="space-y-2.5">
+                  <input
+                    type="text"
+                    placeholder="Attribute Name (e.g. CODING)"
+                    value={newStatName}
+                    onChange={(e) => setNewStatName(e.target.value)}
+                    className="w-full px-3 py-2 rounded bg-slate-950/90 border text-xs outline-none"
+                    style={{ borderColor: `${palette.primary}55`, color: palette.text }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Description..."
+                    value={newStatDesc}
+                    onChange={(e) => setNewStatDesc(e.target.value)}
+                    className="w-full px-3 py-2 rounded bg-slate-950/90 border text-xs outline-none"
+                    style={{ borderColor: `${palette.primary}55`, color: palette.text }}
+                  />
+                  <button onClick={addCustomStat} style={getButtonStyle("primary")} className="w-full py-2 text-xs font-bold uppercase tracking-wider">
+                    + Add Custom Attribute
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t flex items-center justify-between text-xs" style={{ borderColor: `${palette.primary}33` }}>
+                <span className="opacity-75">Active Shadow Bonus:</span>
+                <span className="font-bold" style={{ color: "#10b981" }}>
+                  +{state.shadows.filter((s) => s.unlocked).length * 15}% All Output
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
+      const renderQuestsWindow = () => (
+        <div style={getWindowStyle()} className="p-6 space-y-6 system-window-anim">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4" style={{ borderColor: `${palette.primary}44` }}>
+            <div>
+              <span className="text-xs font-bold tracking-widest uppercase" style={{ color: palette.primary }}>
+                [ SYSTEM DIRECTIVE // DAILY QUEST ]
+              </span>
+              <h2 className="text-2xl font-black tracking-wide mt-0.5">
+                THE PREPARATION TO BECOME STRONG
+              </h2>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button onClick={generateAiSideQuest} style={getButtonStyle("secondary")} className="px-3 py-2 text-xs font-bold uppercase">
+                ⚡ Generate AI Side-Quest
+              </button>
+              <button onClick={claimDailyReward} style={getButtonStyle("primary")} className="px-4 py-2 text-xs font-bold uppercase">
+                {state.dailyClaimed ? "Reward Claimed ✓" : "Claim Daily Reward"}
+              </button>
+              <button
+                onClick={() => {
+                  setState((prev) => ({ ...prev, penaltyMode: !prev.penaltyMode }));
+                  triggerBanner("PENALTY ZONE", "SURVIVE THE CRIMSON TRIAL");
+                }}
+                style={getButtonStyle("danger")}
+                className="px-3 py-2 text-xs font-bold uppercase"
+              >
+                {state.penaltyMode ? "Exit Penalty" : "Penalty Zone"}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {state.quests.map((q) => {
+              const pct = Math.min(100, Math.round((q.current / q.target) * 100));
+              return (
+                <div key={q.id} className="p-4 rounded bg-black/40 border" style={{ borderColor: `${palette.primary}44` }}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-bold text-base">{q.title}</span>
+                    <span className="text-sm font-black" style={{ color: pct >= 100 ? "#10b981" : palette.primary }}>
+                      [{q.current} / {q.target} {q.unit}]
+                    </span>
+                  </div>
+                  <div className="w-full h-2.5 bg-slate-900 rounded overflow-hidden mb-3">
+                    <div className="h-full transition-all duration-300" style={{ width: `${pct}%`, background: pct >= 100 ? "#10b981" : palette.primary }} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs opacity-75">+{q.xp} XP / +{q.gold} G</span>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => updateQuestProgress(q.id, 10)} style={getButtonStyle("primary")} className="px-2.5 py-1 text-xs font-bold">
+                        +10
+                      </button>
+                      <button onClick={() => updateQuestProgress(q.id, q.target)} style={getButtonStyle("secondary")} className="px-2.5 py-1 text-xs font-bold">
+                        MAX
+                      </button>
+                      <button onClick={() => updateQuestProgress(q.id, -q.target)} style={getButtonStyle("danger")} className="px-2 py-1 text-xs font-bold">
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Add Custom Habit + Instant Dungeon Pomodoro */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t" style={{ borderColor: `${palette.primary}33` }}>
+            <div className="p-4 rounded bg-black/40 border space-y-3" style={{ borderColor: `${palette.primary}33` }}>
+              <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: palette.primary }}>
+                + Add Custom Daily Quest Goal
+              </h3>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Quest Name (e.g. Read 20 Pages)"
+                  value={newQuestTitle}
+                  onChange={(e) => setNewQuestTitle(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded bg-slate-950 border text-xs"
+                  style={{ borderColor: `${palette.primary}44` }}
+                />
+                <input
+                  type="number"
+                  value={newQuestTarget}
+                  onChange={(e) => setNewQuestTarget(e.target.value)}
+                  className="w-20 px-2 py-2 rounded bg-slate-950 border text-xs"
+                  style={{ borderColor: `${palette.primary}44` }}
+                />
+                <input
+                  type="text"
+                  value={newQuestUnit}
+                  onChange={(e) => setNewQuestUnit(e.target.value)}
+                  className="w-20 px-2 py-2 rounded bg-slate-950 border text-xs"
+                  style={{ borderColor: `${palette.primary}44` }}
+                />
+              </div>
+              <button onClick={addCustomQuest} style={getButtonStyle("primary")} className="w-full py-2 text-xs font-bold uppercase">
+                Register Quest Directive
+              </button>
+            </div>
+
+            <div className="p-4 rounded bg-black/40 border flex flex-col justify-between" style={{ borderColor: `${palette.primary}33` }}>
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: palette.primary }}>
+                    [ INSTANT DUNGEON // FOCUS TIMER ]
+                  </h3>
+                  <p className="text-xs opacity-75">Clear timed focus raids for +600 XP & +3000 Gold</p>
+                </div>
+                <div className="text-2xl font-black font-mono" style={{ color: palette.accent }}>
+                  {dungeonRunning
+                    ? `${String(Math.floor(dungeonSecondsLeft / 60)).padStart(2, "0")}:${String(dungeonSecondsLeft % 60).padStart(2, "0")}`
+                    : `${dungeonMinutes}:00`}
+                </div>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => {
+                    setDungeonSecondsLeft(dungeonMinutes * 60);
+                    setDungeonRunning(true);
+                    notify("Entered S-Rank Instant Dungeon! Focus timer started.");
+                  }}
+                  style={getButtonStyle("primary")}
+                  className="flex-1 py-2 text-xs font-bold uppercase"
+                >
+                  Enter Dungeon ({dungeonMinutes}m)
+                </button>
+                <button
+                  onClick={() => {
+                    setDungeonRunning(false);
+                    triggerBanner("BOSS SLAIN", "INSTANT DUNGEON CLEARED!");
+                    gainRewards(600, 3000, "INSTANT DUNGEON BOSS SLAIN");
+                  }}
+                  style={getButtonStyle("secondary")}
+                  className="px-3 py-2 text-xs font-bold uppercase"
+                >
+                  Instant Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
+      const renderInventoryWindow = () => (
+        <div style={getWindowStyle()} className="p-6 space-y-6 system-window-anim">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Inventory */}
+            <div>
+              <h2 className="text-xl font-black uppercase tracking-wider mb-4" style={{ color: palette.primary }}>
+                [ HUNTER INVENTORY ]
+              </h2>
+              <div className="space-y-3">
+                {state.inventory.map((item) => (
+                  <div key={item.id} className="p-3.5 rounded bg-black/40 border flex items-center justify-between" style={{ borderColor: `${palette.primary}44` }}>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm">{item.name}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded font-bold" style={{ background: `${palette.primary}33`, color: palette.primary }}>
+                          {item.rarity}
+                        </span>
+                        <span className="text-xs opacity-75">x{item.qty}</span>
+                      </div>
+                      <div className="text-xs opacity-75 mt-0.5">{item.effect}</div>
+                    </div>
+                    <button onClick={() => useOrEquipItem(item)} style={getButtonStyle("primary")} className="px-3 py-1.5 text-xs font-bold uppercase">
+                      {item.type === "WEAPON" ? (item.equipped ? "Unequip" : "Equip") : "Consume"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* System Store */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-black uppercase tracking-wider" style={{ color: palette.primary }}>
+                  [ SYSTEM STORE ]
+                </h2>
+                <span className="text-sm font-black" style={{ color: "#fbbf24" }}>
+                  WALLET: {state.hunter.gold.toLocaleString()} G
+                </span>
+              </div>
+              <div className="space-y-3 mb-4">
+                {state.store.map((sItem) => (
+                  <div key={sItem.id} className="p-3.5 rounded bg-black/40 border flex items-center justify-between" style={{ borderColor: `${palette.primary}44` }}>
+                    <div>
+                      <div className="font-bold text-sm">{sItem.name}</div>
+                      <div className="text-xs opacity-75">{sItem.effect}</div>
+                    </div>
+                    <button onClick={() => buyStoreItem(sItem)} style={getButtonStyle("secondary")} className="px-3 py-1.5 text-xs font-bold uppercase">
+                      Buy ({sItem.cost.toLocaleString()} G)
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Add Custom Store Reward */}
+              <div className="p-3.5 rounded bg-black/40 border space-y-2" style={{ borderColor: `${palette.primary}33` }}>
+                <div className="text-xs font-bold uppercase" style={{ color: palette.primary }}>+ Create Custom Store Reward</div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Reward Name"
+                    value={newStoreItemName}
+                    onChange={(e) => setNewStoreItemName(e.target.value)}
+                    className="flex-1 px-2.5 py-1.5 rounded bg-slate-950 border text-xs"
+                    style={{ borderColor: `${palette.primary}44` }}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Cost (G)"
+                    value={newStoreItemCost}
+                    onChange={(e) => setNewStoreItemCost(e.target.value)}
+                    className="w-24 px-2.5 py-1.5 rounded bg-slate-950 border text-xs"
+                    style={{ borderColor: `${palette.primary}44` }}
+                  />
+                </div>
+                <button onClick={addCustomStoreItem} style={getButtonStyle("primary")} className="w-full py-1.5 text-xs font-bold uppercase">
+                  Add Reward to Store
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
+      const renderShadowsWindow = () => (
+        <div style={getWindowStyle()} className="p-6 space-y-6 system-window-anim">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4" style={{ borderColor: `${palette.primary}44` }}>
+            <div>
+              <span className="text-xs font-bold uppercase tracking-widest" style={{ color: palette.primary }}>
+                [ MONARCH'S LEGION // SHADOW EXTRACTION ]
+              </span>
+              <h2 className="text-2xl font-black tracking-wide">"ARISE" — SHADOW ARMY</h2>
+            </div>
+          </div>
+
+          {/* Custom Shadow Soldier Forge */}
+          <div className="p-4 rounded bg-black/50 border space-y-3" style={{ borderColor: `${palette.primary}66` }}>
+            <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: palette.primary }}>
+              [ ARISE FORGE — CREATE CUSTOM SHADOW SOLDIER ]
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <input
+                type="text"
+                placeholder="Shadow Name (e.g. IRON, GREED, KAISEL)"
+                value={shadowName}
+                onChange={(e) => setShadowName(e.target.value)}
+                className="px-3 py-2 rounded bg-slate-950 border text-xs"
+                style={{ borderColor: `${palette.primary}44` }}
+              />
+              <input
+                type="text"
+                placeholder="Title / Class (e.g. Shadow Wyvern)"
+                value={shadowTitle}
+                onChange={(e) => setShadowTitle(e.target.value)}
+                className="px-3 py-2 rounded bg-slate-950 border text-xs"
+                style={{ borderColor: `${palette.primary}44` }}
+              />
+              <select
+                value={shadowGrade}
+                onChange={(e) => setShadowGrade(e.target.value)}
+                className="px-3 py-2 rounded bg-slate-950 border text-xs"
+                style={{ borderColor: `${palette.primary}44` }}
+              >
+                <option value="ELITE">ELITE GRADE</option>
+                <option value="KNIGHT">KNIGHT GRADE</option>
+                <option value="COMMANDER">COMMANDER GRADE</option>
+                <option value="MARSHAL">MARSHAL GRADE</option>
+                <option value="GRAND MARSHAL">GRAND MARSHAL</option>
+              </select>
+              <input
+                type="text"
+                placeholder="Passive Bonus (e.g. +25% Speed)"
+                value={shadowBonus}
+                onChange={(e) => setShadowBonus(e.target.value)}
+                className="px-3 py-2 rounded bg-slate-950 border text-xs"
+                style={{ borderColor: `${palette.primary}44` }}
+              />
+              <input
+                type="text"
+                placeholder="Battle Cry Quote"
+                value={shadowQuote}
+                onChange={(e) => setShadowQuote(e.target.value)}
+                className="px-3 py-2 rounded bg-slate-950 border text-xs"
+                style={{ borderColor: `${palette.primary}44` }}
+              />
+              <label className="px-3 py-2 rounded bg-slate-950 border text-xs flex items-center justify-center cursor-pointer font-bold" style={{ borderColor: `${palette.primary}66`, color: palette.primary }}>
+                {shadowImageUrl ? "Shadow Portrait Ready ✓" : "Upload Shadow Image (Optional)"}
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoUpload(e, "shadow")} />
+              </label>
+            </div>
+            <button onClick={createCustomShadow} style={getButtonStyle("primary")} className="w-full py-2.5 text-xs font-black uppercase tracking-widest">
+              "ARISE" — EXTRACT & SUMMON CUSTOM SHADOW SOLDIER
+            </button>
+          </div>
+
+          {/* Shadow Soldiers Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {state.shadows.map((sh) => (
+              <div
+                key={sh.id}
+                className="p-4 rounded bg-black/40 border flex flex-col justify-between transition-all"
+                style={{
+                  borderColor: sh.unlocked ? palette.primary : `${palette.primary}33`,
+                  opacity: sh.unlocked ? 1 : 0.6
+                }}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-[10px] px-2 py-0.5 rounded font-bold" style={{ background: `${palette.primary}33`, color: palette.primary }}>
+                      {sh.grade}
+                    </span>
+                    <span className="text-xs font-bold" style={{ color: sh.unlocked ? "#10b981" : "#94a3b8" }}>
+                      {sh.unlocked ? "SUMMONED" : "DORMANT"}
+                    </span>
+                  </div>
+                  {sh.imageUrl && (
+                    <img src={sh.imageUrl} alt={sh.name} className="w-full h-32 object-cover rounded mb-2 border" style={{ borderColor: palette.primary }} />
+                  )}
+                  <h4 className="text-lg font-black">{sh.name}</h4>
+                  <p className="text-xs opacity-75">{sh.title}</p>
+                  <p className="text-xs font-bold mt-2" style={{ color: palette.accent }}>{sh.bonus}</p>
+                  <p className="text-[11px] italic opacity-70 mt-1">"{sh.quote}"</p>
+                </div>
+                <button
+                  onClick={() => toggleShadowArise(sh.id)}
+                  style={getButtonStyle(sh.unlocked ? "secondary" : "primary")}
+                  className="w-full mt-4 py-2 text-xs font-bold uppercase tracking-wider"
+                >
+                  {sh.unlocked ? "Return to Shadow" : "ARISE (Extract)"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+      const renderArchitectWindow = () => (
+        <div style={getWindowStyle()} className="p-6 space-y-6 system-window-anim">
+          <h2 className="text-2xl font-black uppercase tracking-wider border-b pb-3" style={{ color: palette.primary, borderColor: `${palette.primary}44` }}>
+            [ SYSTEM ARCHITECT // UI, LOGO, MONETIZATION & SECURITY ENGINE ]
+          </h2>
+
+          {/* 1. Preset Color Themes */}
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-wider mb-3" style={{ color: palette.primary }}>
+              1. Color Variants & Multi-Tone Presets
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+              {Object.entries(COLOR_PRESETS).map(([key, p]) => (
+                <button
+                  key={key}
+                  onClick={() =>
+                    setState((prev) => ({
+                      ...prev,
+                      ui: { ...prev.ui, preset: key, useCustomColors: false }
+                    }))
+                  }
+                  className="p-2.5 rounded border text-left transition-all flex items-center gap-2"
+                  style={{
+                    background: p.bg,
+                    borderColor: state.ui.preset === key && !state.ui.useCustomColors ? p.primary : `${p.primary}44`,
+                    color: p.text
+                  }}
+                >
+                  <span className="w-4 h-4 rounded-full shrink-0" style={{ background: `linear-gradient(135deg, ${p.primary}, ${p.secondary})` }} />
+                  <span className="text-xs font-bold truncate">{p.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 2. Vector Logo Emblem Selector & Particle Controls */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 rounded bg-black/40 border space-y-3" style={{ borderColor: `${palette.primary}44` }}>
+              <h3 className="text-sm font-bold uppercase" style={{ color: palette.primary }}>
+                2. System Emblem Logo & Ambient Particles
+              </h3>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {[
+                  { id: "cyberHex", name: "01 // Cyber Monarch Hex" },
+                  { id: "monarchCrown", name: "02 // Monarch's Crown" },
+                  { id: "levelCrest", name: "03 // Level-Up Crest" },
+                  { id: "architectNode", name: "04 // Architect's Node" }
+                ].map((lg) => (
+                  <button
+                    key={lg.id}
+                    onClick={() => setState((prev) => ({ ...prev, ui: { ...prev.ui, logoStyle: lg.id } }))}
+                    style={getButtonStyle(state.ui.logoStyle === lg.id ? "primary" : "secondary")}
+                    className="p-2 text-xs font-bold"
+                  >
+                    {lg.name}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center justify-between pt-2 text-xs">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={state.ui.particles}
+                    onChange={(e) => setState((prev) => ({ ...prev, ui: { ...prev.ui, particles: e.target.checked } }))}
+                  />
+                  Enable Floating Mana Particles
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={state.ui.soundEnabled}
+                    onChange={(e) => setState((prev) => ({ ...prev, ui: { ...prev.ui, soundEnabled: e.target.checked } }))}
+                  />
+                  SFX & Haptics
+                </label>
+              </div>
+            </div>
+
+            {/* 3. Window Frame & Button Studio */}
+            <div className="p-4 rounded bg-black/40 border space-y-3" style={{ borderColor: `${palette.primary}44` }}>
+              <h3 className="text-sm font-bold uppercase" style={{ color: palette.primary }}>
+                3. Window Frame, Font & Button Studio
+              </h3>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <label className="block mb-1">Window Frame</label>
+                  <select
+                    value={state.ui.windowStyle}
+                    onChange={(e) => setState((prev) => ({ ...prev, ui: { ...prev.ui, windowStyle: e.target.value } }))}
+                    className="w-full p-2 rounded bg-slate-950 border"
+                    style={{ borderColor: `${palette.primary}55` }}
+                  >
+                    <option value="angular">Classic Angular HUD</option>
+                    <option value="hex">Hexagonal Hive Frame</option>
+                    <option value="glass">Minimalist Glassmorphic</option>
+                    <option value="brutal">Brutalist Double Grid</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block mb-1">Typography</label>
+                  <select
+                    value={state.ui.fontFamily}
+                    onChange={(e) => setState((prev) => ({ ...prev, ui: { ...prev.ui, fontFamily: e.target.value } }))}
+                    className="w-full p-2 rounded bg-slate-950 border"
+                    style={{ borderColor: `${palette.primary}55` }}
+                  >
+                    {FONT_OPTIONS.map((f) => (
+                      <option key={f.id} value={f.id}>{f.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block mb-1">Button Geometry</label>
+                  <select
+                    value={state.ui.btnShape}
+                    onChange={(e) => setState((prev) => ({ ...prev, ui: { ...prev.ui, btnShape: e.target.value } }))}
+                    className="w-full p-2 rounded bg-slate-950 border"
+                    style={{ borderColor: `${palette.primary}55` }}
+                  >
+                    <option value="chamfer">Tactical Chamfer</option>
+                    <option value="rounded">Modern Rounded</option>
+                    <option value="sharp">Brutalist Sharp</option>
+                    <option value="capsule">Sovereign Capsule</option>
+                    <option value="hex">Hexagon Core</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block mb-1">Button Shader</label>
+                  <select
+                    value={state.ui.btnShader}
+                    onChange={(e) => setState((prev) => ({ ...prev, ui: { ...prev.ui, btnShader: e.target.value } }))}
+                    className="w-full p-2 rounded bg-slate-950 border"
+                    style={{ borderColor: `${palette.primary}55` }}
+                  >
+                    <option value="neon">Neon Translucent</option>
+                    <option value="gradient">Dual-Tone Gradient</option>
+                    <option value="solid">Solid High-Contrast</option>
+                    <option value="wireframe">Hologram Wireframe</option>
+                    <option value="ghost">Minimalist Ghost</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. Creator Monetization & UPI / Payment Gateway Studio */}
+          <div className="p-4 rounded bg-black/40 border space-y-3" style={{ borderColor: "#fbbf2466" }}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-bold uppercase" style={{ color: "#fbbf24" }}>
+                4. Creator Payment Gateway & 100 Single-Use Access Codes Vault
+              </h3>
+              <span className="text-xs px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40">
+                🔒 100 SHA-256 Encrypted Codes Active ({100 - totalBurnedCount} Remaining / {totalBurnedCount} Used & Disabled)
+              </span>
+            </div>
+            <p className="text-xs opacity-80">
+              Configure your UPI ID (for instant QR & GPay/PhonePe/Paytm checkout) and optional Razorpay/Stripe link. All 100 Monarch Pro Pass codes are cryptographically hashed in the code so no visitor can inspect or guess them. Once any code is redeemed, it is permanently burned.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <div>
+                <label className="block mb-1 font-bold">Your UPI ID (For Instant QR & App Pay)</label>
+                <input
+                  type="text"
+                  placeholder="yourname@okaxis or 9876543210@ybl"
+                  value={state.monetization.upiId}
+                  onChange={(e) =>
+                    setState((prev) => ({
+                      ...prev,
+                      monetization: { ...prev.monetization, upiId: e.target.value }
+                    }))
+                  }
+                  className="w-full p-2 rounded bg-slate-950 border"
+                  style={{ borderColor: `${palette.primary}44` }}
+                />
+              </div>
+              <div>
+                <label className="block mb-1 font-bold">Merchant / Payee Display Name</label>
+                <input
+                  type="text"
+                  placeholder="THE SYSTEM ARCHITECT"
+                  value={state.monetization.payeeName}
+                  onChange={(e) =>
+                    setState((prev) => ({
+                      ...prev,
+                      monetization: { ...prev.monetization, payeeName: e.target.value }
+                    }))
+                  }
+                  className="w-full p-2 rounded bg-slate-950 border"
+                  style={{ borderColor: `${palette.primary}44` }}
+                />
+              </div>
+              <div>
+                <label className="block mb-1 font-bold">Amount in INR (For UPI QR)</label>
+                <input
+                  type="number"
+                  placeholder="299"
+                  value={state.monetization.priceAmountInr}
+                  onChange={(e) =>
+                    setState((prev) => ({
+                      ...prev,
+                      monetization: {
+                        ...prev.monetization,
+                        priceAmountInr: e.target.value,
+                        priceLabel: `₹${e.target.value} Lifetime`
+                      }
+                    }))
+                  }
+                  className="w-full p-2 rounded bg-slate-950 border"
+                  style={{ borderColor: `${palette.primary}44` }}
+                />
+              </div>
+              <div>
+                <label className="block mb-1 font-bold">WhatsApp Number (To Receive Buyer UTR)</label>
+                <input
+                  type="text"
+                  placeholder="919876543210 (with country code)"
+                  value={state.monetization.whatsappNumber}
+                  onChange={(e) =>
+                    setState((prev) => ({
+                      ...prev,
+                      monetization: { ...prev.monetization, whatsappNumber: e.target.value }
+                    }))
+                  }
+                  className="w-full p-2 rounded bg-slate-950 border"
+                  style={{ borderColor: `${palette.primary}44` }}
+                />
+              </div>
+              <div>
+                <label className="block mb-1 font-bold">Optional External Link (Razorpay/Stripe)</label>
+                <input
+                  type="text"
+                  placeholder="https://rzp.io/l/your-real-link (Optional)"
+                  value={state.monetization.externalPaymentUrl}
+                  onChange={(e) =>
+                    setState((prev) => ({
+                      ...prev,
+                      monetization: { ...prev.monetization, externalPaymentUrl: e.target.value }
+                    }))
+                  }
+                  className="w-full p-2 rounded bg-slate-950 border"
+                  style={{ borderColor: `${palette.primary}44` }}
+                />
+              </div>
+              <div>
+                <label className="block mb-1 font-bold">Manually Disable/Burn Code Slot (#1–100)</label>
+                <div className="flex gap-1.5">
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    placeholder="Slot # (1-100)"
+                    value={adminBurnSlotInput}
+                    onChange={(e) => setAdminBurnSlotInput(e.target.value)}
+                    className="flex-1 p-2 rounded bg-slate-950 border"
+                    style={{ borderColor: `${palette.primary}44` }}
+                  />
+                  <button onClick={manualBurnSlot} style={getButtonStyle("danger")} className="px-3 py-2 font-bold uppercase">
+                    Burn
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 5. Cloud, JSON Backup & Direct Self-HTML Download */}
+          <div className="p-4 rounded bg-black/40 border flex flex-wrap items-center justify-between gap-3" style={{ borderColor: `${palette.primary}44` }}>
+            <div>
+              <h3 className="text-sm font-bold uppercase" style={{ color: palette.primary }}>
+                5. Direct App Download & System Data Backup
+              </h3>
+              <p className="text-xs opacity-75">Download this complete standalone HTML app or export your Hunter JSON profile.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={downloadSelfHtmlFile} style={getButtonStyle("gold")} className="px-4 py-2 text-xs font-black uppercase">
+                💾 Download App (index.html)
+              </button>
+              <button onClick={exportSystemJson} style={getButtonStyle("primary")} className="px-4 py-2 text-xs font-bold uppercase">
+                Export JSON Backup
+              </button>
+              <label style={getButtonStyle("secondary")} className="px-4 py-2 text-xs font-bold uppercase cursor-pointer">
+                Import JSON
+                <input type="file" accept=".json" className="hidden" onChange={importSystemJson} />
+              </label>
+            </div>
+          </div>
+        </div>
+      );
+
+      return (
+        <div
+          className={`min-h-screen relative transition-colors duration-300 ${state.ui.scanlines ? "scanlines" : ""}`}
+          style={{
+            backgroundColor: palette.bg,
+            color: palette.text,
+            fontFamily: state.ui.fontFamily
+          }}
+        >
+          {/* FLOATING MANA PARTICLES CANVAS */}
+          {state.ui.particles && (
+            <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0" />
+          )}
+
+          {/* FULL-SCREEN CINEMATIC LEVEL-UP / ARISE BANNER */}
+          {cinematicBanner && (
+            <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center bg-black/60 backdrop-blur-sm">
+              <div
+                className="w-full py-8 text-center border-y-2 cinematic-banner"
+                style={{
+                  background: `linear-gradient(90deg, transparent, ${palette.primary}33, ${palette.secondary}55, ${palette.primary}33, transparent)`,
+                  borderColor: palette.primary,
+                  boxShadow: `0 0 50px ${palette.primary}66`
+                }}
+              >
+                <div className="text-4xl md:text-6xl font-black tracking-widest uppercase" style={{ color: "#ffffff", textShadow: `0 0 25px ${palette.primary}` }}>
+                  {cinematicBanner.title}
+                </div>
+                <div className="text-sm md:text-lg font-bold tracking-widest uppercase mt-2" style={{ color: palette.accent }}>
+                  {cinematicBanner.subtitle}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TOP SYSTEM HUD HEADER */}
+          <header className="border-b px-4 py-3 sticky top-0 z-30 backdrop-blur-md" style={{ backgroundColor: `${palette.bg}e6`, borderColor: `${palette.primary}44` }}>
+            <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+              {/* Brand Emblem + System Title */}
+              <div className="flex items-center gap-3">
+                <SystemLogo styleId={state.ui.logoStyle} color={palette.primary} accent={palette.accent} />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded" style={{ background: `${palette.primary}22`, color: palette.primary }}>
+                      SOLO LEVELING
+                    </span>
+                    <span className="text-[10px] opacity-70">PRO PWA v5.0</span>
+                  </div>
+                  <h1 className="text-xl font-black tracking-widest" style={{ textShadow: `0 0 ${state.ui.textGlow}px ${palette.primary}` }}>
+                    {state.ui.systemTitle} // PLAYER HUD
+                  </h1>
+                </div>
+              </div>
+
+              {/* Right Controls */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={handleInstallApp}
+                  style={getButtonStyle("primary")}
+                  className="px-3 py-1.5 text-xs font-black uppercase"
+                >
+                  📲 Install App
+                </button>
+                <button
+                  onClick={() => setShowProModal(true)}
+                  style={getButtonStyle("gold")}
+                  className="px-3 py-1.5 text-xs font-black uppercase"
+                >
+                  {state.monetization.proUnlocked ? "★ PRO ACTIVE" : "👑 Monarch Pro"}
+                </button>
+                <button
+                  onClick={() => setState((prev) => ({ ...prev, ui: { ...prev.ui, allWindowsView: !prev.ui.allWindowsView } }))}
+                  style={getButtonStyle("secondary")}
+                  className="px-3 py-1.5 text-xs font-bold uppercase hidden sm:inline-block"
+                >
+                  {state.ui.allWindowsView ? "Single View" : "All-Windows"}
+                </button>
+                <button
+                  onClick={() => setShowQuickDrawer(!showQuickDrawer)}
+                  style={getButtonStyle("secondary")}
+                  className="px-3 py-1.5 text-xs font-bold uppercase"
+                >
+                  Style
+                </button>
+                <button
+                  onClick={() => setShowGoogleModal(true)}
+                  style={getButtonStyle("primary")}
+                  className="px-3 py-1.5 text-xs font-bold uppercase"
+                >
+                  {state.googleVault.bound ? `☁ ${state.googleVault.email.split("@")[0]}` : "Google Vault"}
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* NAVIGATION TABS & DIRECTIVE BAR */}
+          <div className="max-w-7xl mx-auto px-4 pt-4 relative z-10">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { id: "status", label: "STATUS WINDOW" },
+                  { id: "quests", label: "DAILY QUESTS & RAIDS" },
+                  { id: "inventory", label: "INVENTORY & STORE" },
+                  { id: "shadows", label: "SHADOW ARMY (ARISE)" },
+                  { id: "architect", label: "SYSTEM ARCHITECT" }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      triggerFeedback("click", state.ui.soundEnabled, state.ui.hapticsEnabled);
+                    }}
+                    style={getButtonStyle(activeTab === tab.id ? "primary" : "secondary")}
+                    className="px-4 py-2 text-xs font-black tracking-wider uppercase"
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Command Console Input */}
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  placeholder='Directive ("ARISE", "LEVEL UP", "RECOVER")'
+                  value={commandInput}
+                  onChange={(e) => setCommandInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && executeCommand()}
+                  className="px-3 py-1.5 rounded bg-slate-950 border text-xs w-56 outline-none"
+                  style={{ borderColor: `${palette.primary}66`, color: palette.text }}
+                />
+                <button onClick={() => executeCommand()} style={getButtonStyle("primary")} className="px-3 py-1.5 text-xs font-bold uppercase">
+                  EXEC
+                </button>
+              </div>
+            </div>
+
+            {/* NOTIFICATION TOAST */}
+            {toast && (
+              <div
+                className="mb-4 p-3 rounded border flex items-center justify-between"
+                style={{
+                  background: `${palette.primary}22`,
+                  borderColor: palette.primary,
+                  boxShadow: `0 0 15px ${palette.primary}44`
+                }}
+              >
+                <span className="text-xs font-bold tracking-wider uppercase">[SYSTEM NOTIFICATION]: {toast.msg}</span>
+                <button onClick={() => setToast(null)} className="text-xs font-bold opacity-75">✕</button>
+              </div>
+            )}
+
+            {/* MAIN CONTENT AREA */}
+            <main className="pb-16">
+              {state.ui.allWindowsView ? (
+                <div className="space-y-8">
+                  {renderStatusWindow()}
+                  {renderQuestsWindow()}
+                  {renderInventoryWindow()}
+                  {renderShadowsWindow()}
+                  {renderArchitectWindow()}
+                </div>
+              ) : (
+                <>
+                  {activeTab === "status" && renderStatusWindow()}
+                  {activeTab === "quests" && renderQuestsWindow()}
+                  {activeTab === "inventory" && renderInventoryWindow()}
+                  {activeTab === "shadows" && renderShadowsWindow()}
+                  {activeTab === "architect" && renderArchitectWindow()}
+                </>
+              )}
+            </main>
+          </div>
+
+          {/* QUICK CUSTOMIZER FLOATING DRAWER */}
+          {showQuickDrawer && (
+            <div className="fixed right-4 top-20 z-40 w-80 p-4 rounded border space-y-3" style={{ ...getWindowStyle(), backgroundColor: "#040d1af4" }}>
+              <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: `${palette.primary}44` }}>
+                <span className="text-xs font-black uppercase" style={{ color: palette.primary }}>QUICK UI CUSTOMIZER</span>
+                <button onClick={() => setShowQuickDrawer(false)} className="text-xs font-bold">✕</button>
+              </div>
+              <div className="space-y-2 text-xs">
+                <label className="block font-bold">Color Theme</label>
+                <select
+                  value={state.ui.preset}
+                  onChange={(e) => setState((prev) => ({ ...prev, ui: { ...prev.ui, preset: e.target.value, useCustomColors: false } }))}
+                  className="w-full p-1.5 rounded bg-slate-950 border"
+                  style={{ borderColor: `${palette.primary}55` }}
+                >
+                  {Object.entries(COLOR_PRESETS).map(([k, v]) => (
+                    <option key={k} value={k}>{v.name}</option>
+                  ))}
+                </select>
+                <label className="block font-bold mt-2">System Emblem Logo</label>
+                <select
+                  value={state.ui.logoStyle}
+                  onChange={(e) => setState((prev) => ({ ...prev, ui: { ...prev.ui, logoStyle: e.target.value } }))}
+                  className="w-full p-1.5 rounded bg-slate-950 border"
+                  style={{ borderColor: `${palette.primary}55` }}
+                >
+                  <option value="cyberHex">01 // Cyber Monarch Hex</option>
+                  <option value="monarchCrown">02 // Monarch's Crown</option>
+                  <option value="levelCrest">03 // Level-Up Crest</option>
+                  <option value="architectNode">04 // Architect's Node</option>
+                </select>
+                <label className="block font-bold mt-2">Font Family</label>
+                <select
+                  value={state.ui.fontFamily}
+                  onChange={(e) => setState((prev) => ({ ...prev, ui: { ...prev.ui, fontFamily: e.target.value } }))}
+                  className="w-full p-1.5 rounded bg-slate-950 border"
+                  style={{ borderColor: `${palette.primary}55` }}
+                >
+                  {FONT_OPTIONS.map((f) => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* MONARCH PRO PASS & SINGLE-USE CODE REDEMPTION MODAL */}
+          {showProModal && (
+            <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 overflow-y-auto">
+              <div style={getWindowStyle()} className="max-w-lg w-full p-6 space-y-4 my-8">
+                <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: "#fbbf2466" }}>
+                  <h3 className="text-lg font-black uppercase" style={{ color: "#fbbf24" }}>
+                    👑 {state.monetization.planName}
+                  </h3>
+                  <button onClick={() => { setShowProModal(false); setShowCheckoutGateway(false); }}>✕</button>
+                </div>
+
+                {state.monetization.proUnlocked ? (
+                  <div className="p-4 rounded bg-amber-500/10 border border-amber-400/50 space-y-2 text-xs">
+                    <div className="text-base font-black text-amber-300">
+                      ★ MONARCH SOVEREIGN PRO PASS ACTIVE
+                    </div>
+                    <p className="opacity-85">
+                      Activated via Single-Use Access Code <strong>{state.monetization.redeemedCodeSlot}</strong> on {state.monetization.redeemedAt}.
+                    </p>
+                    <p className="text-emerald-300 font-bold">
+                      ✓ 2X XP & Gold Multiplier Active • ✓ Unlimited Shadow Forge • ✓ Sovereign Badge
+                    </p>
+                  </div>
+                ) : !showCheckoutGateway ? (
+                  <>
+                    <p className="text-xs opacity-85">
+                      Ascend to Sovereign rank. Unlock permanent account multipliers and exclusive privileges:
+                    </p>
+                    <ul className="text-xs space-y-1.5 pl-4 list-disc opacity-90">
+                      <li><strong>2X XP & 2X Gold Multiplier</strong> on all Daily Quests and Instant Dungeons</li>
+                      <li><strong>Unlimited Custom Shadow Soldiers</strong> in the Arise Forge</li>
+                      <li><strong>Golden Sovereign Rank Badge</strong> on your Hunter ID Card</li>
+                      <li><strong>Priority Cloud Backup & AI Emergency Quests</strong></li>
+                    </ul>
+
+                    <div className="p-3.5 rounded bg-black/60 border flex items-center justify-between" style={{ borderColor: "#fbbf2455" }}>
+                      <div>
+                        <div className="text-[10px] opacity-75 uppercase">LIFETIME SOVEREIGN ACCESS</div>
+                        <div className="text-xl font-black" style={{ color: "#fbbf24" }}>{state.monetization.priceLabel}</div>
+                      </div>
+                      <button
+                        onClick={() => setShowCheckoutGateway(true)}
+                        style={getButtonStyle("gold")}
+                        className="px-5 py-2.5 text-xs font-black uppercase"
+                      >
+                        Proceed to Payment ↗
+                      </button>
+                    </div>
+
+                    {/* Hidden Single-Use Access Code Input (Zero Hints Shown!) */}
+                    <div className="pt-3 border-t space-y-2" style={{ borderColor: `${palette.primary}33` }}>
+                      <div className="flex items-center justify-between text-xs">
+                        <label className="font-bold">Have a Single-Use Monarch Access Code?</label>
+                        <span className="text-[10px] opacity-70">Each code can only be used once</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="SLM-XXX-XXXX-XXXX"
+                          value={licenseInput}
+                          onChange={(e) => setLicenseInput(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && verifyMonarchLicense()}
+                          className="flex-1 p-2.5 rounded bg-slate-950 border text-xs font-mono uppercase tracking-wider outline-none"
+                          style={{ borderColor: `${palette.primary}55`, color: palette.text }}
+                        />
+                        <button onClick={verifyMonarchLicense} style={getButtonStyle("primary")} className="px-4 py-2 text-xs font-bold uppercase">
+                          Redeem Code
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  /* BUILT-IN MULTI-MODE PAYMENT GATEWAY (UPI QR + UPI INTENT + EXTERNAL LINK + UTR VERIFICATION) */
+                  <div className="space-y-4 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold uppercase tracking-wider" style={{ color: palette.primary }}>
+                        [ SYSTEM PAYMENT TERMINAL // {state.monetization.priceLabel} ]
+                      </span>
+                      <button
+                        onClick={() => setShowCheckoutGateway(false)}
+                        className="text-xs underline opacity-80"
+                      >
+                        ← Back
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center p-3.5 rounded bg-black/50 border" style={{ borderColor: `${palette.primary}44` }}>
+                      <div className="flex flex-col items-center justify-center bg-white p-2.5 rounded-lg">
+                        <img
+                          src={qrCodeImageUrl}
+                          alt="Scan UPI QR to Pay"
+                          className="w-44 h-44 object-contain"
+                        />
+                        <span className="text-[10px] font-bold text-slate-900 mt-1">
+                          SCAN WITH GPAY / PHONEPE / PAYTM
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        <div className="text-xs">
+                          <span className="opacity-70 block">Payee:</span>
+                          <strong className="text-sm" style={{ color: "#fbbf24" }}>{state.monetization.payeeName}</strong>
+                        </div>
+                        <div className="text-xs">
+                          <span className="opacity-70 block">UPI ID:</span>
+                          <code className="text-xs font-bold select-all" style={{ color: palette.primary }}>{state.monetization.upiId}</code>
+                        </div>
+                        <div className="text-xs">
+                          <span className="opacity-70 block">Amount:</span>
+                          <strong className="text-base text-emerald-400">₹{state.monetization.priceAmountInr}.00 INR</strong>
+                        </div>
+
+                        <a
+                          href={upiDeepLink}
+                          style={getButtonStyle("gold")}
+                          className="w-full py-2.5 text-center font-black uppercase block"
+                        >
+                          ⚡ Pay ₹{state.monetization.priceAmountInr} via UPI App
+                        </a>
+
+                        {state.monetization.externalPaymentUrl && state.monetization.externalPaymentUrl.startsWith("http") && (
+                          <a
+                            href={state.monetization.externalPaymentUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={getButtonStyle("secondary")}
+                            className="w-full py-2 text-center font-bold uppercase block"
+                          >
+                            💳 Pay via Card / Gateway Link ↗
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Step 2: Enter UTR / Transaction ID to Claim Single-Use Access Code */}
+                    <div className="p-3.5 rounded bg-black/50 border space-y-2.5" style={{ borderColor: `${palette.primary}44` }}>
+                      <div className="font-bold uppercase" style={{ color: palette.accent }}>
+                        Step 2: Submit Payment Ref / UTR to Receive Your Single-Use Code
+                      </div>
+                      <p className="text-[11px] opacity-75">
+                        After paying via UPI or Card, enter your 12-digit UPI Ref / UTR number below to request your single-use Monarch Access Code:
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          placeholder="12-Digit UTR / Transaction ID"
+                          value={utrInput}
+                          onChange={(e) => setUtrInput(e.target.value)}
+                          className="p-2 rounded bg-slate-950 border text-xs font-mono"
+                          style={{ borderColor: `${palette.primary}55` }}
+                        />
+                        <input
+                          type="email"
+                          placeholder="Your Email / WhatsApp (Optional)"
+                          value={buyerEmailInput}
+                          onChange={(e) => setBuyerEmailInput(e.target.value)}
+                          className="p-2 rounded bg-slate-950 border text-xs"
+                          style={{ borderColor: `${palette.primary}55` }}
+                        />
+                      </div>
+                      <button
+                        onClick={handleVerifyPaymentReceipt}
+                        style={getButtonStyle("primary")}
+                        className="w-full py-2 font-bold uppercase"
+                      >
+                        Verify Payment & Request Access Code
+                      </button>
+                      {paymentSubmitted && (
+                        <div className="p-2 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[11px]">
+                          ✓ Payment UTR <strong>{utrInput}</strong> recorded! Once you receive your single-use code (`SLM-XXX-XXXX-XXXX`), enter it below to unlock Monarch Pro immediately.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Step 3: Direct Code Redemption inside Checkout */}
+                    <div className="pt-2 border-t flex gap-2" style={{ borderColor: `${palette.primary}33` }}>
+                      <input
+                        type="text"
+                        placeholder="Enter Single-Use Code (SLM-XXX-XXXX-XXXX)"
+                        value={licenseInput}
+                        onChange={(e) => setLicenseInput(e.target.value)}
+                        className="flex-1 p-2 rounded bg-slate-950 border text-xs font-mono uppercase"
+                        style={{ borderColor: `${palette.primary}55` }}
+                      />
+                      <button onClick={verifyMonarchLicense} style={getButtonStyle("gold")} className="px-4 py-2 font-black uppercase">
+                        Unlock Pro
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* NATIVE APP INSTALL GUIDE MODAL (PHONE & PC) */}
+          {showInstallModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+              <div style={getWindowStyle()} className="max-w-md w-full p-6 space-y-4">
+                <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: `${palette.primary}44` }}>
+                  <h3 className="text-lg font-black uppercase" style={{ color: palette.primary }}>
+                    📲 INSTALL OR DOWNLOAD APP (PHONE & PC)
+                  </h3>
+                  <button onClick={() => setShowInstallModal(false)}>✕</button>
+                </div>
+                <div className="space-y-3 text-xs leading-relaxed">
+                  <button
+                    onClick={downloadSelfHtmlFile}
+                    style={getButtonStyle("gold")}
+                    className="w-full py-2.5 text-xs font-black uppercase"
+                  >
+                    💾 Click Here to Download index.html Directly
+                  </button>
+                  <div className="p-3 rounded bg-black/40 border" style={{ borderColor: `${palette.primary}33` }}>
+                    <strong className="block mb-1" style={{ color: palette.primary }}>Android / Windows / macOS (Chrome or Edge):</strong>
+                    Open your hosted GitHub Pages URL and tap the <strong>Install App icon</strong> in the address bar or browser menu (⋮) → <strong>"Install app"</strong>.
+                  </div>
+                  <div className="p-3 rounded bg-black/40 border" style={{ borderColor: `${palette.primary}33` }}>
+                    <strong className="block mb-1" style={{ color: palette.primary }}>iPhone / iPad (Safari):</strong>
+                    Tap <strong>Share</strong> at the bottom of Safari and select <strong>"Add to Home Screen"</strong>.
+                  </div>
+                </div>
+                <button onClick={() => setShowInstallModal(false)} style={getButtonStyle("primary")} className="w-full py-2 text-xs font-bold uppercase">
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* EDIT HUNTER ID & PHOTO MODAL */}
+          {showIdModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+              <div style={getWindowStyle()} className="max-w-md w-full p-6 space-y-4">
+                <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: `${palette.primary}44` }}>
+                  <h3 className="text-lg font-black uppercase" style={{ color: palette.primary }}>EDIT HUNTER ID & PHOTO</h3>
+                  <button onClick={() => setShowIdModal(false)}>✕</button>
+                </div>
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="block mb-1 font-bold">Hunter Name</label>
+                    <input
+                      type="text"
+                      value={state.hunter.name}
+                      onChange={(e) => setState((prev) => ({ ...prev, hunter: { ...prev.hunter, name: e.target.value } }))}
+                      className="w-full p-2 rounded bg-slate-950 border"
+                      style={{ borderColor: `${palette.primary}55` }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 font-bold">Job / Class</label>
+                    <input
+                      type="text"
+                      value={state.hunter.job}
+                      onChange={(e) => setState((prev) => ({ ...prev, hunter: { ...prev.hunter, job: e.target.value } }))}
+                      className="w-full p-2 rounded bg-slate-950 border"
+                      style={{ borderColor: `${palette.primary}55` }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 font-bold">Title</label>
+                    <input
+                      type="text"
+                      value={state.hunter.title}
+                      onChange={(e) => setState((prev) => ({ ...prev, hunter: { ...prev.hunter, title: e.target.value } }))}
+                      className="w-full p-2 rounded bg-slate-950 border"
+                      style={{ borderColor: `${palette.primary}55` }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 font-bold">Upload ID Photo from Device</label>
+                    <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, "hunter")} className="w-full text-xs" />
+                  </div>
+                </div>
+                <button onClick={() => setShowIdModal(false)} style={getButtonStyle("primary")} className="w-full py-2 text-xs font-bold uppercase">
+                  Save & Close
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* GOOGLE ACCOUNT PRIVATE VAULT MODAL */}
+          {showGoogleModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+              <div style={getWindowStyle()} className="max-w-md w-full p-6 space-y-4">
+                <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: `${palette.primary}44` }}>
+                  <h3 className="text-lg font-black uppercase" style={{ color: palette.primary }}>GOOGLE ACCOUNT PRIVATE VAULT</h3>
+                  <button onClick={() => setShowGoogleModal(false)}>✕</button>
+                </div>
+                <p className="text-xs opacity-80">
+                  Bind your Google Account email to isolate and auto-save your Hunter progress in a dedicated encrypted vault slot.
+                </p>
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="block mb-1 font-bold">Google Email (@gmail.com)</label>
+                    <input
+                      type="email"
+                      placeholder="hunter@gmail.com"
+                      value={gEmail}
+                      onChange={(e) => setGEmail(e.target.value)}
+                      className="w-full p-2 rounded bg-slate-950 border"
+                      style={{ borderColor: `${palette.primary}55` }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 font-bold">Hunter Display Name</label>
+                    <input
+                      type="text"
+                      value={gName}
+                      onChange={(e) => setGName(e.target.value)}
+                      className="w-full p-2 rounded bg-slate-950 border"
+                      style={{ borderColor: `${palette.primary}55` }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 font-bold">Optional Private Vault PIN</label>
+                    <input
+                      type="password"
+                      placeholder="••••"
+                      value={gPin}
+                      onChange={(e) => setGPin(e.target.value)}
+                      className="w-full p-2 rounded bg-slate-950 border"
+                      style={{ borderColor: `${palette.primary}55` }}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={bindGoogleVault} style={getButtonStyle("primary")} className="flex-1 py-2 text-xs font-bold uppercase">
+                    Bind & Save Vault
+                  </button>
+                  <button onClick={restoreFromGoogleVault} style={getButtonStyle("secondary")} className="flex-1 py-2 text-xs font-bold uppercase">
+                    Restore Vault
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+
+  <!-- Progressive Web App Service Worker Registration -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
